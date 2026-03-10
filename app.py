@@ -5,6 +5,7 @@ from functools import wraps
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -13,6 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 load_dotenv()
 
 db = SQLAlchemy()
+migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = "login"
 login_manager.login_message_category = "warning"
@@ -88,11 +90,14 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///buffet_club.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    instance_path = os.path.join(app.root_path, "instance")
+    os.makedirs(instance_path, exist_ok=True)
+
     db.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
 
     with app.app_context():
-        db.create_all()
         seed_admin_from_env()
 
     register_routes(app)

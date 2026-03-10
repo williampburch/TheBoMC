@@ -109,6 +109,14 @@ python app.py
 
 Then open `http://localhost:5000`.
 
+### 5. Initialize the database schema
+
+For a fresh local database:
+
+```powershell
+flask --app app:app db upgrade
+```
+
 ## Deployment recommendation
 
 You said you want the container route on an Azure VM, partly because you still have credits and partly because you want AZ-104 practice. That is a reasonable choice here.
@@ -129,13 +137,23 @@ Suggested shape:
 4. Copy the repo to the VM or pull it from GitHub.
 5. Create a production `.env`.
 6. Run `docker compose up -d --build`.
-7. Put Nginx or Caddy in front later if you want TLS termination and a cleaner domain setup.
+7. Run `docker compose exec web flask --app app:app db upgrade`.
+8. Use the included Nginx container as the public reverse proxy.
+9. Issue a Let's Encrypt certificate, then enable the TLS Nginx config.
 
 If you use SQLite in the container deployment, point `DATABASE_URL` at the mounted volume path:
 
 ```env
 DATABASE_URL=sqlite:////app/instance/buffet_club.db
 ```
+
+The repo includes:
+
+- [docker-compose.yml](d:\repos\BoMC\docker-compose.yml)
+- [nginx/conf.d/default.conf](d:\repos\BoMC\nginx\conf.d\default.conf)
+- [nginx/conf.d/tls.conf.example](d:\repos\BoMC\nginx\conf.d\tls.conf.example)
+
+Use the HTTP-only Nginx config first. After the certificate is issued, copy `tls.conf.example` to `tls.conf`, replace the placeholder domain names, and reload the Nginx container.
 
 ### Database choice for the VM path
 
@@ -189,12 +207,26 @@ That keeps the operating model similar.
 
 ## Important note about schema changes
 
-This project still uses `db.create_all()` for simplicity. That is acceptable for a fresh start, but once you have real data you should add migrations before changing models further.
+This project now uses Flask-Migrate/Alembic for schema management.
+
+Common commands:
+
+```powershell
+flask --app app:app db upgrade
+flask --app app:app db migrate -m "describe change"
+flask --app app:app db downgrade
+```
+
+The initial migration lives in [migrations/versions/20260310_000001_initial_schema.py](d:\repos\BoMC\migrations\versions\20260310_000001_initial_schema.py).
+
+For the Azure VM/container path, run migrations after deploy and before exposing the app publicly.
+
+## Azure VM runbook
+
+Use the detailed deployment guide in [deploy/azure-vm.md](d:\repos\BoMC\deploy\azure-vm.md).
 
 ## Next steps worth doing
 
-1. Add migration tooling with Alembic or Flask-Migrate before the schema evolves much more.
-2. Add Nginx and HTTPS setup for the Azure VM deployment.
-3. Add delete/archive flows for restaurants and members with guardrails around historical data.
-4. Add photo uploads for each buffet visit.
-5. Add role separation if you want non-admin authenticated users later.
+1. Add delete/archive flows for restaurants and members with guardrails around historical data.
+2. Add photo uploads for each buffet visit.
+3. Add role separation if you want non-admin authenticated users later.

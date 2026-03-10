@@ -1,0 +1,3 @@
+Run migrations with:
+
+flask --app app:app db upgrade

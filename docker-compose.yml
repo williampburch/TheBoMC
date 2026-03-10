@@ -2,13 +2,34 @@ services:
   web:
     build: .
     container_name: bomc-web
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     restart: unless-stopped
     volumes:
       - bomc_data:/app/instance
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: bomc-nginx
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+  certbot:
+    image: certbot/certbot:latest
+    container_name: bomc-certbot
+    profiles:
+      - certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
 
 volumes:
   bomc_data:
+  certbot_www:
+  letsencrypt:
