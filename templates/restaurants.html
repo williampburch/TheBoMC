@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel form-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Venue admin</p>
+        <h2>Restaurants</h2>
+      </div>
+      <a href="{{ url_for('create_restaurant') }}" class="button button-primary">Add Restaurant</a>
+    </div>
+    <div class="catalog-grid admin-grid">
+      {% for restaurant in restaurants %}
+      <article class="catalog-card">
+        <h3>{{ restaurant.name }}</h3>
+        <p>{{ restaurant.city }}</p>
+        <p class="member-title">{{ restaurant.category }} | {{ 'Active' if restaurant.active else 'Inactive' }}</p>
+        <p>{{ restaurant.visits|length }} visits logged.</p>
+        <a href="{{ url_for('edit_restaurant', restaurant_id=restaurant.id) }}" class="text-link">Edit restaurant</a>
+      </article>
+      {% else %}
+      <article class="catalog-card">
+        <h3>No restaurants yet</h3>
+        <p>Create your buffet list here.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

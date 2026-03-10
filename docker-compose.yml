@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    container_name: bomc-web
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - bomc_data:/app/instance
+
+volumes:
+  bomc_data:

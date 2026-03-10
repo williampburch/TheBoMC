@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel form-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Roster admin</p>
+        <h2>Club members</h2>
+      </div>
+      <a href="{{ url_for('create_member') }}" class="button button-primary">Add Member</a>
+    </div>
+    <div class="catalog-grid admin-grid">
+      {% for member in members %}
+      <article class="catalog-card">
+        <h3>{{ member.name }}</h3>
+        <p class="member-title">{{ 'Active' if member.active else 'Inactive' }}</p>
+        <p>{{ member.weigh_ins|length }} weigh-ins recorded.</p>
+        <a href="{{ url_for('edit_member', member_id=member.id) }}" class="text-link">Edit member</a>
+      </article>
+      {% else %}
+      <article class="catalog-card">
+        <h3>No members yet</h3>
+        <p>Create the roster here.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel form-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Admin workflow</p>
+        <h2>{{ "Edit buffet visit" if visit else "Log a new buffet visit" }}</h2>
+      </div>
+    </div>
+    <form method="post" class="form-grid">
+      <label>
+        <span>Restaurant</span>
+        <select name="restaurant_id" required>
+          <option value="">Select a restaurant</option>
+          {% for restaurant in restaurants %}
+          {% set selected_id = request.form.get('restaurant_id', visit.restaurant_id if visit else '') %}
+          <option value="{{ restaurant.id }}" {% if selected_id|string == restaurant.id|string %}selected{% endif %}>
+            {{ restaurant.name }} | {{ restaurant.city }} | {{ restaurant.category }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="grid-two">
+        <label>
+          <span>Visit date</span>
+          <input
+            type="date"
+            name="visit_date"
+            value="{{ request.form.get('visit_date', visit.visit_date.isoformat() if visit else '') }}"
+            required
+          />
+        </label>
+        <label>
+          <span>Price per person</span>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="price_per_person"
+            value="{{ request.form.get('price_per_person', visit.price_per_person if visit else '') }}"
+            required
+          />
+        </label>
+      </div>
+
+      <label>
+        <span>Overall rating</span>
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          max="10"
+          name="overall_rating"
+          value="{{ request.form.get('overall_rating', visit.overall_rating if visit else '') }}"
+          required
+        />
+      </label>
+
+      <label>
+        <span>Visit notes</span>
+        <textarea name="notes" rows="5" required>{{ request.form.get('notes', visit.notes if visit else '') }}</textarea>
+      </label>
+
+      <section class="weigh-in-editor">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Before and after</p>
+            <h2>Weigh-ins</h2>
+          </div>
+        </div>
+        <div class="weigh-in-editor-grid">
+          {% for member in members %}
+          {% set existing = weigh_in_map.get(member.id) %}
+          <article class="member-input-card">
+            <h3>{{ member.name }}</h3>
+            <label>
+              <span>Before buffet</span>
+              <input
+                type="number"
+                step="0.1"
+                name="before_{{ member.id }}"
+                value="{{ request.form.get('before_' ~ member.id, existing.before_weight if existing else '') }}"
+              />
+            </label>
+            <label>
+              <span>After buffet</span>
+              <input
+                type="number"
+                step="0.1"
+                name="after_{{ member.id }}"
+                value="{{ request.form.get('after_' ~ member.id, existing.after_weight if existing else '') }}"
+              />
+            </label>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <button type="submit" class="button button-primary">
+        {{ "Save changes" if visit else "Create visit" }}
+      </button>
+    </form>
+  </section>
+</main>
+{% endblock %}

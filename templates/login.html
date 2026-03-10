@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel auth-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Admin access</p>
+        <h2>Sign in to manage visits</h2>
+      </div>
+    </div>
+    <form method="post" class="form-grid">
+      <label>
+        <span>Email</span>
+        <input type="email" name="email" required />
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" name="password" required />
+      </label>
+      <button type="submit" class="button button-primary">Sign In</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

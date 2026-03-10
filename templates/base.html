@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Buffet of the Month Club</title>
+    <meta
+      name="description"
+      content="Track buffet visits, ratings, restaurants, members, and weigh-in gains for the Buffet of the Month Club."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div>
+          <p class="eyebrow">Established by appetite, not restraint</p>
+          <a class="brand" href="{{ url_for('home') }}">Buffet of the Month Club</a>
+        </div>
+        <nav class="site-nav">
+          <a href="{{ url_for('home') }}#latest">Visits</a>
+          <a href="{{ url_for('home') }}#scoreboard">Scoreboard</a>
+          <a href="{{ url_for('home') }}#members">Members</a>
+          <a href="{{ url_for('home') }}#restaurants">Restaurants</a>
+          {% if current_user.is_authenticated %}
+          <a href="{{ url_for('create_visit') }}">New Visit</a>
+          <a href="{{ url_for('list_members') }}">Manage Members</a>
+          <a href="{{ url_for('list_restaurants') }}">Manage Restaurants</a>
+          <a href="{{ url_for('create_user') }}">New Admin</a>
+          <form action="{{ url_for('logout') }}" method="post" class="inline-form">
+            <button type="submit" class="nav-button">Logout</button>
+          </form>
+          {% else %}
+          <a href="{{ url_for('login') }}">Admin Login</a>
+          {% endif %}
+        </nav>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <section class="flash-stack">
+        {% for category, message in messages %}
+        <article class="flash flash-{{ category }}">{{ message }}</article>
+        {% endfor %}
+      </section>
+      {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>

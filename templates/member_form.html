@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel auth-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Roster admin</p>
+        <h2>{{ 'Edit member' if member else 'Add member' }}</h2>
+      </div>
+    </div>
+    <form method="post" class="form-grid">
+      <label>
+        <span>Member name</span>
+        <input type="text" name="name" value="{{ request.form.get('name', member.name if member else '') }}" required />
+      </label>
+      <label class="checkbox-row">
+        <input
+          type="checkbox"
+          name="active"
+          {% if request.method == 'POST' %}
+          {% if request.form.get('active') == 'on' %}checked{% endif %}
+          {% elif member is none or member.active %}
+          checked
+          {% endif %}
+        />
+        <span>Active member</span>
+      </label>
+      <button type="submit" class="button button-primary">{{ 'Save member' if member else 'Create member' }}</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
