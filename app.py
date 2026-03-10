@@ -7,7 +7,9 @@ from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 from sqlalchemy import func
+from sqlalchemy.exc import OperationalError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -129,7 +131,15 @@ def seed_admin_from_env():
     if not admin_email or not admin_password:
         return
 
-    existing_user = User.query.filter_by(email=admin_email.lower()).first()
+    inspector = inspect(db.engine)
+    if "user" not in inspector.get_table_names():
+        return
+
+    try:
+        existing_user = User.query.filter_by(email=admin_email.lower()).first()
+    except OperationalError:
+        return
+
     if existing_user:
         return
 
