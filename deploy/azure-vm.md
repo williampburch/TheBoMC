@@ -54,32 +54,38 @@ az vm show --show-details --resource-group $RG --name $VM --query publicIps --ou
 ssh azureuser@<vm-public-ip>
 ```
 
-## 3. Install Docker and Compose on Ubuntu
-
-Docker docs can change. Use the current official Docker Engine install guide for Ubuntu:
-
-- https://docs.docker.com/engine/install/ubuntu/
-
-At a minimum, verify:
-
-```bash
-docker --version
-docker compose version
-```
-
-## 4. Pull the repo onto the VM
+## 3. Pull the repo onto the VM
 
 ```bash
 git clone https://github.com/williampburch/TheBoMC.git
 cd TheBoMC
+chmod +x scripts/bootstrap-ubuntu.sh scripts/deploy.sh
 ```
 
-Or if you already copied the repo some other way, just `cd` into it.
-
-## 5. Create the production environment file
+## 4. Run the bootstrap script
 
 ```bash
-cp .env.example .env
+./scripts/bootstrap-ubuntu.sh
+```
+
+What it does:
+
+- Installs Docker Engine and Docker Compose plugin if needed
+- Enables Docker on boot
+- Adds your user to the `docker` group
+- Clones the repo if it is missing
+- Creates `.env` from `.env.example` if needed
+
+After it finishes:
+
+1. Log out of the SSH session.
+2. Log back in.
+3. Return to the app directory.
+
+## 5. Edit the production environment file
+
+```bash
+nano .env
 ```
 
 Minimum production values:
@@ -94,35 +100,20 @@ ADMIN_NAME=<your-name>
 
 If you move to Azure Database for PostgreSQL later, replace `DATABASE_URL` with the Postgres connection string.
 
-## 6. Start the app stack
+## 6. Run the deploy script
 
 ```bash
-docker compose up -d --build
+./scripts/deploy.sh
 ```
 
-Check status:
+What it does:
 
-```bash
-docker compose ps
-docker compose logs web --tail 100
-docker compose logs nginx --tail 100
-```
+- Pulls latest Git changes
+- Builds and starts the containers
+- Runs `flask db upgrade`
+- Shows container status
 
-## 7. Run database migrations
-
-Run the initial schema migration:
-
-```bash
-docker compose exec web flask --app app:app db upgrade
-```
-
-If needed, seed the first admin by restarting after `.env` is in place:
-
-```bash
-docker compose restart web
-```
-
-## 8. Test HTTP before enabling TLS
+## 7. Test HTTP before enabling TLS
 
 Visit:
 
@@ -132,7 +123,7 @@ http://<vm-public-ip>
 
 At this stage, Nginx should proxy to the Flask app over port 80.
 
-## 9. Point your domain to the VM
+## 8. Point your domain to the VM
 
 Create DNS records for your chosen domain:
 
@@ -143,7 +134,7 @@ Both should point at the VM public IP.
 
 Wait for DNS to resolve before requesting a certificate.
 
-## 10. Issue a Let's Encrypt certificate
+## 9. Issue a Let's Encrypt certificate
 
 The repo already mounts the ACME challenge directory and Let's Encrypt storage into the Nginx and Certbot containers.
 
@@ -160,7 +151,7 @@ docker compose run --rm --service-ports certbot certonly \
   -d www.example.com
 ```
 
-## 11. Enable TLS in Nginx
+## 10. Enable TLS in Nginx
 
 Copy the example TLS config:
 
@@ -179,7 +170,7 @@ Then reload Nginx:
 docker compose restart nginx
 ```
 
-## 12. Renew certificates
+## 11. Renew certificates
 
 Run periodically, for example from cron or a systemd timer:
 
@@ -188,7 +179,36 @@ docker compose run --rm certbot renew
 docker compose restart nginx
 ```
 
-## 13. Operational checks
+## 12. Normal update workflow
+
+When you make changes locally and push them to GitHub:
+
+```bash
+cd ~/TheBoMC
+./scripts/deploy.sh
+```
+
+That is your normal redeploy path.
+
+## 13. What you should do on the VM
+
+Concrete checklist:
+
+1. Create the VM and open ports `22`, `80`, and `443`.
+2. SSH into the VM.
+3. Clone the repo.
+4. Mark the scripts executable.
+5. Run `./scripts/bootstrap-ubuntu.sh`.
+6. Log out and back in.
+7. Edit `.env`.
+8. Run `./scripts/deploy.sh`.
+9. Confirm the app loads on `http://<vm-public-ip>`.
+10. Point your domain to the VM.
+11. Issue the certificate with Certbot.
+12. Enable `nginx/conf.d/tls.conf`.
+13. Restart Nginx.
+
+## 14. Operational checks
 
 Useful commands:
 
@@ -199,7 +219,7 @@ docker compose logs -f nginx
 docker exec -it bomc-web /bin/sh
 ```
 
-## 14. Hardening ideas for AZ-104 practice
+## 15. Hardening ideas for AZ-104 practice
 
 Good follow-up tasks:
 

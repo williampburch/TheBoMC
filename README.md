@@ -152,6 +152,8 @@ The repo includes:
 - [docker-compose.yml](d:\repos\BoMC\docker-compose.yml)
 - [nginx/conf.d/default.conf](d:\repos\BoMC\nginx\conf.d\default.conf)
 - [nginx/conf.d/tls.conf.example](d:\repos\BoMC\nginx\conf.d\tls.conf.example)
+- [scripts/bootstrap-ubuntu.sh](d:\repos\BoMC\scripts\bootstrap-ubuntu.sh)
+- [scripts/deploy.sh](d:\repos\BoMC\scripts\deploy.sh)
 
 Use the HTTP-only Nginx config first. After the certificate is issued, copy `tls.conf.example` to `tls.conf`, replace the placeholder domain names, and reload the Nginx container.
 
@@ -224,6 +226,32 @@ For the Azure VM/container path, run migrations after deploy and before exposing
 ## Azure VM runbook
 
 Use the detailed deployment guide in [deploy/azure-vm.md](d:\repos\BoMC\deploy\azure-vm.md).
+
+## VM operations
+
+### First-time VM setup
+
+On the VM:
+
+```bash
+chmod +x scripts/bootstrap-ubuntu.sh scripts/deploy.sh
+./scripts/bootstrap-ubuntu.sh
+```
+
+Then:
+
+1. Log out and back in so the `docker` group membership applies.
+2. Edit `.env`.
+3. Run `./scripts/deploy.sh`.
+
+### Normal redeploy
+
+On the VM:
+
+```bash
+cd ~/TheBoMC
+./scripts/deploy.sh
+```
 
 ## Next steps worth doing
 
