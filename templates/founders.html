@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}Founders | Buffet of the Month Club{% endblock %}
+
 {% block content %}
 <main class="single-column">
   <section class="panel spotlight-panel">
@@ -8,7 +10,7 @@
         <p class="eyebrow">Founders</p>
         <h2>The admin roster</h2>
       </div>
-      <p>Founders are the admins who manage visit entry, weigh-ins, and the club ledger.</p>
+      <p>Founders are the admins who manage visit entry, weigh-ins, account access, and the club ledger.</p>
     </div>
     <div class="catalog-grid admin-grid">
       {% for founder in founders %}

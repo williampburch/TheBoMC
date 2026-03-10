@@ -1,33 +1,35 @@
 {% extends "base.html" %}
 
+{% block title %}Admin Portal | Buffet of the Month Club{% endblock %}
+
 {% block content %}
 <main class="single-column admin-portal-page">
-  <section class="panel spotlight-panel">
+  <section class="panel spotlight-panel admin-hero">
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Admin portal</p>
-        <h2>Data entry and ledger management</h2>
+        <h2>Data entry stays here</h2>
       </div>
-      <p>Use this area for visit entry, weigh-ins, member updates, and account management. The public homepage stays intentionally lighter.</p>
+      <p>Only admins can enter or edit visits, restaurants, weigh-ins, members, and privileged accounts.</p>
     </div>
     <div class="overview-grid admin-action-grid">
-      <article class="overview-card panel">
+      <article class="overview-card">
         <p class="eyebrow">Visits</p>
         <h3>Log a trip</h3>
-        <p>Create or update buffet visits and enter the weigh-ins for everyone who attended.</p>
+        <p>Create or update buffet visits and record the weigh-ins for the people who attended.</p>
         <a href="{{ url_for('create_visit') }}" class="text-link">Open visit entry</a>
       </article>
-      <article class="overview-card panel">
+      <article class="overview-card">
         <p class="eyebrow">Members</p>
         <h3>{{ people|length }} tracked guests</h3>
         <p>Manage the guest roster used in weigh-in entry.</p>
         <a href="{{ url_for('list_members') }}" class="text-link">Manage members</a>
       </article>
-      <article class="overview-card panel">
-        <p class="eyebrow">Admins</p>
+      <article class="overview-card">
+        <p class="eyebrow">Accounts</p>
         <h3>{{ user_count }} user accounts</h3>
-        <p>Create admins and keep founder access limited to the right people.</p>
-        <a href="{{ url_for('create_user') }}" class="text-link">Create user</a>
+        <p>Create standard users or additional admins when needed.</p>
+        <a href="{{ url_for('create_user') }}" class="text-link">Create account</a>
       </article>
     </div>
   </section>

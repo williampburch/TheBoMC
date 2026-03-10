@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Buffet of the Month Club</title>
+    <title>{% block title %}Buffet of the Month Club{% endblock %}</title>
     <meta
       name="description"
-      content="Track buffet visits, member weigh-ins, and club comments for the Buffet of the Month Club."
+      content="Track buffet visits, member weigh-ins, and club stats for the Buffet of the Month Club."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,35 +19,39 @@
   <body>
     <div class="page-shell">
       <header class="site-header">
-        <div class="brand-lockup">
-          <a class="brand-mark" href="{{ url_for('home') }}">BoMC</a>
-          <div>
-            <p class="eyebrow">Buffet ledger, rebuilt with restraint</p>
-            <a class="brand" href="{{ url_for('home') }}">Buffet of the Month Club</a>
-          </div>
-        </div>
+        <a class="brand-lockup" href="{{ url_for('home') }}">
+          <span class="brand-mark">BoMC</span>
+          <span>
+            <span class="eyebrow">Buffet of the Month Club</span>
+            <span class="brand">Club Ledger</span>
+          </span>
+        </a>
         <details class="nav-drawer">
           <summary class="nav-toggle">Menu</summary>
           <div class="nav-drawer-panel">
             <div class="nav-cluster">
               <nav class="site-nav">
-                <a href="{{ url_for('home') }}">Home</a>
-                <a href="{{ url_for('visits_archive') }}">Trips</a>
-                <a href="{{ url_for('guests') }}">Guests</a>
-                <a href="{{ url_for('founders') }}">Founders</a>
+                <a class="{% if request.endpoint == 'home' %}is-active{% endif %}" href="{{ url_for('home') }}">Splash</a>
+                <a class="{% if request.endpoint == 'dashboard' %}is-active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a class="{% if request.endpoint == 'visits_archive' %}is-active{% endif %}" href="{{ url_for('visits_archive') }}">Trips</a>
+                <a class="{% if request.endpoint == 'guests' %}is-active{% endif %}" href="{{ url_for('guests') }}">Guests</a>
+                <a class="{% if request.endpoint == 'founders' %}is-active{% endif %}" href="{{ url_for('founders') }}">Founders</a>
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a class="{% if request.endpoint in ['admin_dashboard', 'create_visit', 'edit_visit', 'create_user', 'list_members', 'create_member', 'edit_member'] %}is-active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>
+                {% endif %}
               </nav>
               <div class="nav-actions">
-                {% if current_user.is_authenticated and current_user.is_admin %}
-                <a href="{{ url_for('admin_dashboard') }}" class="button button-primary compact-button">Admin Portal</a>
+                {% if current_user.is_authenticated %}
+                <span class="session-pill">
+                  {{ current_user.username }}
+                  {% if current_user.is_admin %}<span>admin</span>{% endif %}
+                </span>
                 <form action="{{ url_for('logout') }}" method="post" class="inline-form">
-                  <button type="submit" class="button button-secondary compact-button">Logout</button>
-                </form>
-                {% elif current_user.is_authenticated %}
-                <form action="{{ url_for('logout') }}" method="post" class="inline-form">
-                  <button type="submit" class="button button-secondary compact-button">Logout</button>
+                  <button type="submit" class="button button-secondary compact-button">Sign out</button>
                 </form>
                 {% else %}
-                <a href="{{ url_for('login') }}" class="button button-secondary compact-button">Login</a>
+                <a href="{{ url_for('login') }}" class="text-link nav-auth-link">Sign in</a>
+                <a href="{{ url_for('register') }}" class="button button-primary compact-button">Create account</a>
                 {% endif %}
               </div>
             </div>

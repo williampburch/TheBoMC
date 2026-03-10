@@ -7,26 +7,31 @@
   <section class="panel auth-panel spotlight-panel">
     <div class="section-heading compact">
       <div>
-        <p class="eyebrow">Account admin</p>
-        <h2>Create another account</h2>
+        <p class="eyebrow">Create account</p>
+        <h2>Register for private access</h2>
       </div>
-      <p>Use this for members who need login access. Only enable administrator for people who should manage club data.</p>
+      <p>This creates a standard member account. Admin permissions stay restricted.</p>
     </div>
     <form method="post" class="form-grid">
+      <input type="hidden" name="next" value="{{ next_target }}" />
       <label>
         <span>Username</span>
-        <input type="text" name="username" required />
+        <input type="text" name="username" value="{{ request.form.get('username', '') }}" required />
       </label>
       <label>
         <span>Password</span>
         <input type="password" name="password" required />
       </label>
-      <label class="checkbox-row">
-        <input type="checkbox" name="is_admin" />
-        <span>Administrator</span>
+      <label>
+        <span>Confirm password</span>
+        <input type="password" name="confirm_password" required />
       </label>
       <button type="submit" class="button button-primary">Create account</button>
     </form>
+    <p class="auth-helper">
+      Already have an account?
+      <a href="{{ url_for('login', next=next_target) }}" class="text-link">Sign in</a>
+    </p>
   </section>
 </main>
 {% endblock %}

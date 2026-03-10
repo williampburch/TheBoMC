@@ -1,185 +1,116 @@
 {% extends "base.html" %}
 
+{% block title %}Splash | Buffet of the Month Club{% endblock %}
+
 {% block content %}
-<main>
-  <section class="hero hero-home">
+<main class="single-column splash-page">
+  <section class="hero splash-hero">
     <div class="hero-copy">
-      <p class="eyebrow">Latest mission report</p>
-      <h1>{{ latest_visit.restaurant if latest_visit else 'A cleaner home base for the club ledger.' }}</h1>
+      <p class="eyebrow">Public splash page</p>
+      <h1>The club ledger now has a front door.</h1>
       <p class="hero-text">
-        {% if latest_visit %}
-        {{ latest_visit.label }} is the most recent buffet on record. The public homepage now stays focused on highlights, trends, and who is doing the most damage over time.
-        {% else %}
-        The scoreboard is ready. Once a visit is logged, this page turns into a cleaner recap instead of a giant running feed.
-        {% endif %}
+        This page stays intentionally light. The charts, trip archive, guest rankings, and founder roster now sit behind a member account so the site feels simpler and more deliberate.
       </p>
       <div class="hero-actions">
-        {% if latest_visit %}
-        <a class="button button-primary" href="{{ url_for('visits_archive') }}">View Trip Archive</a>
+        {% if current_user.is_authenticated %}
+        <a class="button button-primary" href="{{ url_for('dashboard') }}">Open dashboard</a>
+        <a class="button button-secondary" href="{{ url_for('visits_archive') }}">See trips</a>
+        {% else %}
+        <a class="button button-primary" href="{{ url_for('register') }}">Create account</a>
+        <a class="button button-secondary" href="{{ url_for('login') }}">Sign in</a>
         {% endif %}
-        <a class="button button-secondary" href="{{ url_for('guests') }}">Guest Leaderboard</a>
       </div>
     </div>
-    <aside class="hero-rail panel">
-      <div class="hero-rail-heading">
-        <p class="eyebrow">Latest trip</p>
-        <h2>{{ latest_visit.label if latest_visit else 'Waiting on first trip' }}</h2>
-      </div>
-      {% if latest_visit %}
-      <div class="scorecard-frame">
-        <p class="scorecard-label">Latest trip total gain</p>
-        <p class="scorecard-value">{{ "%.1f"|format(latest_visit.total_gain) }}</p>
-        <p class="scorecard-subtext">pounds gained at {{ latest_visit.restaurant }}</p>
-      </div>
-        <div class="weigh-in-table">
-        {% for weight in latest_visit.weights[:4] %}
-        <div class="weigh-in-row">
-          <strong>{{ weight.person.full_name if weight.person else 'Unknown guest' }}</strong>
-          <span>{{ "+%.1f"|format(weight.gain) }} lb</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="empty-state compact-empty">
-        <h3>No trip loaded yet</h3>
-        <p>Log a visit from the admin portal to populate the homepage.</p>
-      </div>
-      {% endif %}
-    </aside>
-  </section>
-
-  <section class="overview-grid">
-    <article class="overview-card panel">
-      <p class="eyebrow">Trips logged</p>
-      <h3>{{ visit_count }}</h3>
-      <p>Total monthly visit records available in the archive.</p>
-    </article>
-    <article class="overview-card panel">
-      <p class="eyebrow">Career leader</p>
-      {% if top_guest %}
-      <h3>{{ top_guest.person.full_name }}</h3>
-      <p>{{ "%.1f"|format(top_guest.total_gain) }} lbs gained across {{ top_guest.visit_count }} trips.</p>
-      {% else %}
-      <h3>No leaderboard yet</h3>
-      <p>Guest totals appear here once weigh-ins exist.</p>
-      {% endif %}
-    </article>
-    <article class="overview-card panel">
-      <p class="eyebrow">Founders</p>
-      <h3>{{ founders|length }}</h3>
-      <p>The founders page shows admins only, while guests get their own leaderboard.</p>
-    </article>
-  </section>
-
-  <section class="dashboard-grid dashboard-grid-wide">
-    <section class="panel analytics-panel">
+    <aside class="panel hero-rail">
       <div class="section-heading compact">
         <div>
-          <p class="eyebrow">Trendline</p>
-          <h2>Recent trip gains</h2>
+          <p class="eyebrow">At a glance</p>
+          <h2>Public preview</h2>
         </div>
-        <p>Simple visual context for the latest months instead of dumping every trip onto the front page.</p>
       </div>
-      <div class="trend-chart">
-        {% for item in monthly_trend %}
-        {% set width = 8 if max_monthly_gain == 0 else ((item.gain / max_monthly_gain) * 100)|round(0, 'ceil') %}
-        <article class="trend-row">
-          <div>
-            <strong>{{ item.label }}</strong>
-            <p>{{ "%.1f"|format(item.gain) }} lbs total gain</p>
-          </div>
-          <div class="trend-bar-track">
-            <span class="trend-bar" style="width: {{ width }}%;"></span>
-          </div>
-        </article>
-        {% else %}
-        <article class="catalog-card">
-          <h3>No trend data yet</h3>
-          <p>The chart fills in after the first few visits are logged.</p>
-        </article>
-        {% endfor %}
-      </div>
-    </section>
-
-    <aside class="side-stack">
-      <section class="panel" id="scoreboard">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">All-time trips</p>
-            <h2>Top gainers</h2>
-          </div>
-        </div>
-        <div class="scoreboard-list">
-          {% for row in scoreboard[:5] %}
-          <article class="score-row">
-            <div class="score-rank">{{ loop.index }}</div>
-            <div>
-              <h3>{{ row.visit.restaurant }}</h3>
-              <p>{{ row.visit.label }}</p>
-            </div>
-            <div class="score-value">{{ "%.1f"|format(row.total_gain) }}</div>
-          </article>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="panel members-panel" id="members">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">The founders</p>
-            <h2>Admin roster</h2>
-          </div>
-          <a href="{{ url_for('founders') }}" class="text-link">View founders</a>
-        </div>
-        <div class="members slim-grid">
-          {% for founder in founders[:4] %}
-          <article class="member-card">
-            <div class="member-badge">{{ loop.index }}</div>
-            <h3>{{ founder.username }}</h3>
-            <p class="member-title">Founder admin</p>
-            <p>Manages weigh-ins, visits, and ledger cleanup from the admin portal.</p>
-          </article>
-          {% else %}
-          <article class="member-card">
-            <h3>No founders yet</h3>
-            <p>Create at least one admin to manage the club ledger.</p>
-          </article>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="panel compact-panel" id="comments">
-        <div class="section-heading compact">
-          <div>
-            <p class="eyebrow">Club chatter</p>
-            <h2>Recent comments</h2>
-          </div>
-        </div>
-        {% if current_user.is_authenticated %}
-        <form method="post" action="{{ url_for('create_comment') }}" class="form-grid compact-form">
-          <label>
-            <span>Leave a comment</span>
-            <textarea name="comment" rows="3" maxlength="500" required></textarea>
-          </label>
-          <button type="submit" class="button button-primary">Post Comment</button>
-        </form>
-        {% endif %}
-        <div class="visit-feed compact-feed">
-          {% for comment in comments[:4] %}
-          <article class="catalog-card">
-            <p class="eyebrow">{{ comment.created_at.strftime("%B %d, %Y %I:%M %p") }}</p>
-            <h3>{{ comment.user.username if comment.user else 'Unknown founder' }}</h3>
-            <p>{{ comment.comment }}</p>
-          </article>
-          {% else %}
-          <article class="catalog-card">
-            <h3>No comments yet</h3>
-            <p>The first comment will show up here.</p>
-          </article>
-          {% endfor %}
-        </div>
-      </section>
+      <ul class="stat-grid">
+        <li>
+          <p class="eyebrow">Trips</p>
+          <span>{{ visit_count }}</span>
+          <p>Visits on record</p>
+        </li>
+        <li>
+          <p class="eyebrow">Guests</p>
+          <span>{{ people_count }}</span>
+          <p>Tracked members</p>
+        </li>
+        <li>
+          <p class="eyebrow">Restaurants</p>
+          <span>{{ restaurant_count }}</span>
+          <p>Unique stops</p>
+        </li>
+        <li>
+          <p class="eyebrow">Total gain</p>
+          <span>{{ "%.1f"|format(total_gain) }}</span>
+          <p>Pounds logged</p>
+        </li>
+      </ul>
     </aside>
+  </section>
+
+  <section class="overview-grid splash-preview-grid">
+    <article class="overview-card panel preview-card">
+      <p class="eyebrow">Dashboard</p>
+      <h3>Charts and highlights</h3>
+      <p>Signed-in members get the trend chart, top trips, comments, and current leaderboard snapshots.</p>
+      <a href="{{ url_for('dashboard') }}" class="text-link">Open dashboard</a>
+    </article>
+    <article class="overview-card panel preview-card">
+      <p class="eyebrow">Trips</p>
+      <h3>Archive and weigh-ins</h3>
+      <p>See every recorded buffet visit, the before and after numbers, and the biggest gainers per trip.</p>
+      <a href="{{ url_for('visits_archive') }}" class="text-link">Browse archive</a>
+    </article>
+    <article class="overview-card panel preview-card">
+      <p class="eyebrow">Guests</p>
+      <h3>Leaderboards and founders</h3>
+      <p>Guest rankings and founder/admin roster stay available once a member is signed in.</p>
+      <a href="{{ url_for('guests') }}" class="text-link">View rankings</a>
+    </article>
+  </section>
+
+  <section class="panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Current snapshot</p>
+        <h2>{{ latest_visit.restaurant if latest_visit else "Waiting on the next buffet run" }}</h2>
+      </div>
+      {% if current_user.is_authenticated and current_user.is_admin %}
+      <a href="{{ url_for('admin_dashboard') }}" class="button button-secondary compact-button">Admin portal</a>
+      {% endif %}
+    </div>
+    <div class="dashboard-grid">
+      <article class="catalog-card">
+        <p class="eyebrow">Latest trip</p>
+        {% if latest_visit %}
+        <h3>{{ latest_visit.label }}</h3>
+        <p>{{ latest_visit.restaurant }} produced {{ "%.1f"|format(latest_visit.total_gain) }} pounds of total gain.</p>
+        {% else %}
+        <h3>No visit yet</h3>
+        <p>An admin needs to log the first trip before this preview fills in.</p>
+        {% endif %}
+      </article>
+      <article class="catalog-card">
+        <p class="eyebrow">Career leader</p>
+      {% if top_guest %}
+      <h3>{{ top_guest.person.full_name }}</h3>
+      <p>{{ "%.1f"|format(top_guest.total_gain) }} pounds gained across {{ top_guest.visit_count }} recorded visits.</p>
+      {% else %}
+      <h3>No leaderboard yet</h3>
+      <p>Career totals appear here once weigh-ins are available.</p>
+      {% endif %}
+      </article>
+      <article class="catalog-card">
+        <p class="eyebrow">Founders</p>
+        <h3>{{ founders|length }}</h3>
+        <p>Admins can manage users, members, weigh-ins, and visit entry from the private portal.</p>
+      </article>
+    </div>
   </section>
 </main>
 {% endblock %}

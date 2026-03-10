@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Buffet of the Month Club{% endblock %}
+
+{% block content %}
+<main class="single-column dashboard-page">
+  <section class="panel dashboard-hero">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Members only</p>
+        <h1>Stats and club history, without the clutter.</h1>
+      </div>
+      <div class="hero-actions">
+        <a class="button button-secondary" href="{{ url_for('visits_archive') }}">Trip archive</a>
+        {% if current_user.is_admin %}
+        <a class="button button-primary" href="{{ url_for('admin_dashboard') }}">Admin portal</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="overview-grid">
+      <article class="overview-card">
+        <p class="eyebrow">Trips logged</p>
+        <h3>{{ visit_count }}</h3>
+        <p>Total buffet visits currently in the ledger.</p>
+      </article>
+      <article class="overview-card">
+        <p class="eyebrow">Guests tracked</p>
+        <h3>{{ people_count }}</h3>
+        <p>Members with at least one place on the roster.</p>
+      </article>
+      <article class="overview-card">
+        <p class="eyebrow">Restaurants</p>
+        <h3>{{ restaurant_count }}</h3>
+        <p>Unique stops recorded across club history.</p>
+      </article>
+      <article class="overview-card">
+        <p class="eyebrow">Total gain</p>
+        <h3>{{ "%.1f"|format(total_gain) }}</h3>
+        <p>Cumulative pounds logged in recorded weigh-ins.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="dashboard-grid">
+    <section class="panel analytics-panel">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">Trendline</p>
+          <h2>Recent trip gains</h2>
+        </div>
+        <p>The latest six visits, reduced to one quick chart.</p>
+      </div>
+      <div class="trend-chart">
+        {% for item in monthly_trend %}
+        {% set width = 8 if max_monthly_gain == 0 else ((item.gain / max_monthly_gain) * 100)|round(0, 'ceil') %}
+        <article class="trend-row">
+          <div>
+            <strong>{{ item.label }}</strong>
+            <p>{{ "%.1f"|format(item.gain) }} lbs total gain</p>
+          </div>
+          <div class="trend-bar-track">
+            <span class="trend-bar" style="width: {{ width }}%;"></span>
+          </div>
+        </article>
+        {% else %}
+        <article class="catalog-card">
+          <h3>No trend data yet</h3>
+          <p>Once visits are logged, the chart will appear here.</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Latest trip</p>
+            <h2>{{ latest_visit.label if latest_visit else "No trips logged yet" }}</h2>
+          </div>
+        </div>
+        {% if latest_visit %}
+        <div class="scorecard-frame">
+          <p class="scorecard-label">{{ latest_visit.restaurant }}</p>
+          <p class="scorecard-value">{{ "%.1f"|format(latest_visit.total_gain) }}</p>
+          <p class="scorecard-subtext">total pounds gained on the latest recorded visit</p>
+        </div>
+        <div class="weigh-in-table">
+          {% for weight in latest_visit.weights[:4] %}
+          <div class="weigh-in-row">
+            <strong>{{ weight.person.full_name if weight.person else "Unknown guest" }}</strong>
+            <span>{{ "+%.1f"|format(weight.gain) }} lb</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <article class="empty-state compact-empty">
+          <h3>No visit data yet</h3>
+          <p>An admin needs to log the first buffet trip.</p>
+        </article>
+        {% endif %}
+      </section>
+
+      <section class="panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Career leader</p>
+            <h2>Top guest</h2>
+          </div>
+          <a href="{{ url_for('guests') }}" class="text-link">Full leaderboard</a>
+        </div>
+        {% if top_guest %}
+        <article class="score-row">
+          <div class="score-rank">1</div>
+          <div>
+            <h3>{{ top_guest.person.full_name }}</h3>
+            <p>{{ top_guest.visit_count }} visits recorded</p>
+          </div>
+          <div class="score-value">{{ "%.1f"|format(top_guest.total_gain) }}</div>
+        </article>
+        {% else %}
+        <article class="empty-state compact-empty">
+          <h3>No guest data yet</h3>
+          <p>Weigh-ins will populate the leaderboard.</p>
+        </article>
+        {% endif %}
+      </section>
+    </aside>
+  </section>
+
+  <section class="dashboard-grid">
+    <section class="panel">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">Top trips</p>
+          <h2>Highest total gains</h2>
+        </div>
+        <a href="{{ url_for('visits_archive') }}" class="text-link">Browse archive</a>
+      </div>
+      <div class="scoreboard-list">
+        {% for row in scoreboard[:5] %}
+        <article class="score-row">
+          <div class="score-rank">{{ loop.index }}</div>
+          <div>
+            <h3>{{ row.visit.restaurant }}</h3>
+            <p>{{ row.visit.label }}</p>
+          </div>
+          <div class="score-value">{{ "%.1f"|format(row.total_gain) }}</div>
+        </article>
+        {% else %}
+        <article class="empty-state compact-empty">
+          <h3>No trip rankings yet</h3>
+          <p>The archive will show up once the first visit exists.</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Restaurant rollup</p>
+            <h2>Where the club goes</h2>
+          </div>
+        </div>
+        <div class="catalog-grid slim-grid">
+          {% for restaurant in restaurant_rollup[:6] %}
+          <article class="catalog-card">
+            <h3>{{ restaurant.name }}</h3>
+            <p>{{ restaurant.visit_count }} visits logged</p>
+          </article>
+          {% else %}
+          <article class="catalog-card">
+            <h3>No restaurant data yet</h3>
+            <p>The list will populate after the first trip.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="panel compact-panel" id="comments">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Club chatter</p>
+            <h2>Recent comments</h2>
+          </div>
+        </div>
+        <form method="post" action="{{ url_for('create_comment') }}" class="form-grid compact-form">
+          <label>
+            <span>Leave a comment</span>
+            <textarea name="comment" rows="3" maxlength="500" required></textarea>
+          </label>
+          <button type="submit" class="button button-primary">Post comment</button>
+        </form>
+        <div class="visit-feed compact-feed">
+          {% for comment in comments[:4] %}
+          <article class="catalog-card">
+            <p class="eyebrow">{{ comment.created_at.strftime("%B %d, %Y %I:%M %p") }}</p>
+            <h3>{{ comment.user.username if comment.user else "Unknown founder" }}</h3>
+            <p>{{ comment.comment }}</p>
+          </article>
+          {% else %}
+          <article class="catalog-card">
+            <h3>No comments yet</h3>
+            <p>The first signed-in member can start the thread.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+</main>
+{% endblock %}

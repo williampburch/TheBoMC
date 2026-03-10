@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}Trips | Buffet of the Month Club{% endblock %}
+
 {% block content %}
 <main class="single-column archive-page">
   <section class="panel spotlight-panel">
@@ -8,7 +10,7 @@
         <p class="eyebrow">Trip archive</p>
         <h2>Every buffet visit</h2>
       </div>
-      <p>The full feed lives here now, so the homepage can stay focused and readable.</p>
+      <p>The full visit feed lives here, while the splash page stays intentionally spare.</p>
     </div>
     <div class="visit-feed">
       {% for visit in visits %}

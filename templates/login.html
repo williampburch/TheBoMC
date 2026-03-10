@@ -1,26 +1,33 @@
 {% extends "base.html" %}
 
+{% block title %}Sign In | Buffet of the Month Club{% endblock %}
+
 {% block content %}
 <main class="single-column">
   <section class="panel auth-panel spotlight-panel">
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Member access</p>
-        <h2>Sign in to comment or manage the ledger</h2>
+        <h2>Sign in to open the private club pages</h2>
       </div>
-      <p>Legacy usernames still work after import. Admin users can also update visits and members.</p>
+      <p>The splash page stays public. Everything else now requires an account.</p>
     </div>
     <form method="post" class="form-grid">
+      <input type="hidden" name="next" value="{{ next_target }}" />
       <label>
         <span>Username</span>
-        <input type="text" name="username" required />
+        <input type="text" name="username" value="{{ request.form.get('username', '') }}" required />
       </label>
       <label>
         <span>Password</span>
         <input type="password" name="password" required />
       </label>
-      <button type="submit" class="button button-primary">Sign In</button>
+      <button type="submit" class="button button-primary">Sign in</button>
     </form>
+    <p class="auth-helper">
+      Need an account?
+      <a href="{{ url_for('register', next=next_target) }}" class="text-link">Create one here</a>
+    </p>
   </section>
 </main>
 {% endblock %}

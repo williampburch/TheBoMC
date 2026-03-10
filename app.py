@@ -2,6 +2,7 @@ import os
 from calendar import month_name
 from datetime import datetime
 from functools import wraps
+from urllib.parse import urlsplit
 
 import bcrypt
 from dotenv import load_dotenv
@@ -178,7 +179,7 @@ def admin_required(view_func):
     def wrapped_view(*args, **kwargs):
         if not current_user.is_admin:
             flash("Admin access is required.", "error")
-            return redirect(url_for("home"))
+            return redirect(url_for("dashboard"))
         return view_func(*args, **kwargs)
 
     return wrapped_view
@@ -227,6 +228,21 @@ def parse_float(value, fallback=0.0):
 
 def parse_int(value):
     return int(str(value).strip())
+
+
+def is_safe_redirect_target(target):
+    if not target:
+        return False
+
+    parsed = urlsplit(target)
+    return not parsed.scheme and not parsed.netloc and target.startswith("/")
+
+
+def get_redirect_target(default_endpoint="dashboard"):
+    target = request.args.get("next") or request.form.get("next")
+    if is_safe_redirect_target(target):
+        return target
+    return url_for(default_endpoint)
 
 
 def get_people():
@@ -315,6 +331,34 @@ def register_routes(app):
         visits = sort_visits(Visit.query.all())
         people = get_people()
         founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
+        restaurant_rollup = build_restaurant_rollup(visits)
+        total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
+        latest_visit = visits[0] if visits else None
+        guest_leaderboard = sorted(
+            (PersonLeaderboardRow(person) for person in people),
+            key=lambda row: row.total_gain,
+            reverse=True,
+        )
+        top_guest = guest_leaderboard[0] if guest_leaderboard else None
+
+        return render_template(
+            "home.html",
+            founders=founders,
+            latest_visit=latest_visit,
+            top_guest=top_guest,
+            restaurant_rollup=restaurant_rollup,
+            visit_count=len(visits),
+            people_count=len(people),
+            restaurant_count=len(restaurant_rollup),
+            total_gain=total_gain,
+        )
+
+    @app.route("/dashboard")
+    @login_required
+    def dashboard():
+        visits = sort_visits(Visit.query.all())
+        people = get_people()
+        founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
         comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
         restaurant_rollup = build_restaurant_rollup(visits)
         total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
@@ -325,17 +369,12 @@ def register_routes(app):
             key=lambda row: row.total_gain,
             reverse=True,
         )
-        monthly_trend = [
-            {"label": visit.label, "gain": visit.total_gain}
-            for visit in visits[:6]
-        ]
+        monthly_trend = [{"label": visit.label, "gain": visit.total_gain} for visit in visits[:6]]
         max_monthly_gain = max((item["gain"] for item in monthly_trend), default=0)
         top_guest = guest_leaderboard[0] if guest_leaderboard else None
 
         return render_template(
-            "home.html",
-            visits=visits,
-            people=people,
+            "dashboard.html",
             founders=founders,
             comments=comments,
             scoreboard=scoreboard,
@@ -346,23 +385,27 @@ def register_routes(app):
             max_monthly_gain=max_monthly_gain,
             restaurant_rollup=restaurant_rollup,
             visit_count=len(visits),
+            people_count=len(people),
             restaurant_count=len(restaurant_rollup),
             total_gain=total_gain,
         )
 
     @app.route("/visits")
+    @login_required
     def visits_archive():
         visits = sort_visits(Visit.query.all())
         scoreboard = sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True)
         return render_template("visits.html", visits=visits, scoreboard=scoreboard)
 
     @app.route("/founders")
+    @login_required
     def founders():
         founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
         latest_comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
         return render_template("founders.html", founders=founders, comments=latest_comments)
 
     @app.route("/guests")
+    @login_required
     def guests():
         people = get_people()
         guest_leaderboard = sorted(
@@ -389,7 +432,7 @@ def register_routes(app):
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if current_user.is_authenticated:
-            return redirect(url_for("home"))
+            return redirect(url_for("dashboard"))
 
         if request.method == "POST":
             username = request.form.get("username", "").strip().lower()
@@ -398,10 +441,46 @@ def register_routes(app):
             if user and user.check_password(password):
                 login_user(user)
                 flash("Signed in.", "success")
-                return redirect(url_for("home"))
+                return redirect(get_redirect_target())
             flash("Invalid username or password.", "error")
 
-        return render_template("login.html")
+        return render_template("login.html", next_target=request.args.get("next", ""))
+
+    @app.route("/register", methods=["GET", "POST"])
+    def register():
+        if current_user.is_authenticated:
+            return redirect(url_for("dashboard"))
+
+        if request.method == "POST":
+            username = request.form.get("username", "").strip().lower()
+            password = request.form.get("password", "")
+            confirm_password = request.form.get("confirm_password", "")
+
+            if not username or not password:
+                flash("Username and password are required.", "error")
+                return render_template("register.html", next_target=request.form.get("next", ""))
+
+            if len(password) < 8:
+                flash("Password must be at least 8 characters.", "error")
+                return render_template("register.html", next_target=request.form.get("next", ""))
+
+            if password != confirm_password:
+                flash("Passwords did not match.", "error")
+                return render_template("register.html", next_target=request.form.get("next", ""))
+
+            if User.query.filter(func.lower(User.username) == username).first():
+                flash("A user with that username already exists.", "error")
+                return render_template("register.html", next_target=request.form.get("next", ""))
+
+            user = User(username=username, is_admin=False)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
+            flash("Account created. You are now signed in.", "success")
+            return redirect(get_redirect_target())
+
+        return render_template("register.html", next_target=request.args.get("next", ""))
 
     @app.route("/logout", methods=["POST"])
     @login_required
@@ -416,15 +495,15 @@ def register_routes(app):
         text = request.form.get("comment", "").strip()
         if not text:
             flash("Comment text is required.", "error")
-            return redirect(url_for("home") + "#comments")
+            return redirect(url_for("dashboard") + "#comments")
         if len(text) > 500:
             flash("Comments must be 500 characters or fewer.", "error")
-            return redirect(url_for("home") + "#comments")
+            return redirect(url_for("dashboard") + "#comments")
 
         db.session.add(Comment(user_id=current_user.id, comment=text))
         db.session.commit()
         flash("Comment posted.", "success")
-        return redirect(url_for("home") + "#comments")
+        return redirect(url_for("dashboard") + "#comments")
 
     @app.route("/admin/visit/new", methods=["GET", "POST"])
     @admin_required
@@ -455,7 +534,7 @@ def register_routes(app):
             db.session.add(visit)
             db.session.commit()
             flash("Buffet visit created.", "success")
-            return redirect(url_for("home"))
+            return redirect(url_for("admin_dashboard"))
 
         return render_template("visit_form.html", visit=None, weight_map={}, people=people)
 
@@ -483,7 +562,7 @@ def register_routes(app):
                 visit.weights.append(WeighIn(**weight_data))
             db.session.commit()
             flash("Buffet visit updated.", "success")
-            return redirect(url_for("home"))
+            return redirect(url_for("admin_dashboard"))
 
         return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
 
@@ -494,7 +573,7 @@ def register_routes(app):
         db.session.delete(visit)
         db.session.commit()
         flash("Buffet visit deleted.", "success")
-        return redirect(url_for("home"))
+        return redirect(url_for("admin_dashboard"))
 
     @app.route("/admin/users/new", methods=["GET", "POST"])
     @admin_required
@@ -515,7 +594,7 @@ def register_routes(app):
             db.session.add(user)
             db.session.commit()
             flash("User created.", "success")
-            return redirect(url_for("home"))
+            return redirect(url_for("admin_dashboard"))
 
         return render_template("user_form.html")
 
