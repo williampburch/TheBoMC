@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Founders</p>
+        <h2>The admin roster</h2>
+      </div>
+      <p>Founders are the admins who manage visit entry, weigh-ins, and the club ledger.</p>
+    </div>
+    <div class="catalog-grid admin-grid">
+      {% for founder in founders %}
+      <article class="catalog-card">
+        <h3>{{ founder.username }}</h3>
+        <p>Administrator account</p>
+        <p class="member-title">Founder</p>
+      </article>
+      {% else %}
+      <article class="catalog-card">
+        <h3>No founders yet</h3>
+        <p>Create an admin account to populate this page.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel compact-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Club chatter</p>
+        <h2>Recent comments</h2>
+      </div>
+    </div>
+    <div class="visit-feed compact-feed">
+      {% for comment in comments %}
+      <article class="catalog-card">
+        <p class="eyebrow">{{ comment.created_at.strftime("%B %d, %Y %I:%M %p") }}</p>
+        <h3>{{ comment.user.username if comment.user else 'Unknown founder' }}</h3>
+        <p>{{ comment.comment }}</p>
+      </article>
+      {% else %}
+      <article class="catalog-card">
+        <h3>No comments yet</h3>
+        <p>The first comment will show up here.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Guest leaderboard</p>
+        <h2>Career weight gained</h2>
+      </div>
+      <p>Every guest ranked by total recorded weight gained across the club history.</p>
+    </div>
+    <div class="scoreboard-list leaderboard-list">
+      {% for row in guest_leaderboard %}
+      <article class="score-row">
+        <div class="score-rank">{{ loop.index }}</div>
+        <div>
+          <h3>{{ row.person.full_name }}</h3>
+          <p>{{ row.visit_count }} visits recorded</p>
+        </div>
+        <div class="score-value">{{ "%.1f"|format(row.total_gain) }}</div>
+      </article>
+      {% else %}
+      <article class="score-row">
+        <div>
+          <h3>No guest data yet</h3>
+          <p>The leaderboard populates once weigh-ins exist.</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

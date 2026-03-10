@@ -70,6 +70,10 @@ class Person(db.Model):
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
 
+    @property
+    def career_gain(self):
+        return round(sum(weight.gain for weight in self.weights), 1)
+
 
 class Visit(db.Model):
     __tablename__ = "visit"
@@ -134,6 +138,13 @@ class RestaurantSummary:
     def __init__(self, name, visit_count):
         self.name = name
         self.visit_count = visit_count
+
+
+class PersonLeaderboardRow:
+    def __init__(self, person):
+        self.person = person
+        self.total_gain = person.career_gain
+        self.visit_count = len({weight.visit_id for weight in person.weights})
 
 
 def create_app():
@@ -303,23 +314,76 @@ def register_routes(app):
     def home():
         visits = sort_visits(Visit.query.all())
         people = get_people()
+        founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
         comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
         restaurant_rollup = build_restaurant_rollup(visits)
         total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
         scoreboard = sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True)
         latest_visit = visits[0] if visits else None
+        guest_leaderboard = sorted(
+            (PersonLeaderboardRow(person) for person in people),
+            key=lambda row: row.total_gain,
+            reverse=True,
+        )
+        monthly_trend = [
+            {"label": visit.label, "gain": visit.total_gain}
+            for visit in visits[:6]
+        ]
+        max_monthly_gain = max((item["gain"] for item in monthly_trend), default=0)
+        top_guest = guest_leaderboard[0] if guest_leaderboard else None
 
         return render_template(
             "home.html",
             visits=visits,
             people=people,
+            founders=founders,
             comments=comments,
             scoreboard=scoreboard,
             latest_visit=latest_visit,
+            top_guest=top_guest,
+            guest_leaderboard=guest_leaderboard,
+            monthly_trend=monthly_trend,
+            max_monthly_gain=max_monthly_gain,
             restaurant_rollup=restaurant_rollup,
             visit_count=len(visits),
             restaurant_count=len(restaurant_rollup),
             total_gain=total_gain,
+        )
+
+    @app.route("/visits")
+    def visits_archive():
+        visits = sort_visits(Visit.query.all())
+        scoreboard = sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True)
+        return render_template("visits.html", visits=visits, scoreboard=scoreboard)
+
+    @app.route("/founders")
+    def founders():
+        founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
+        latest_comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
+        return render_template("founders.html", founders=founders, comments=latest_comments)
+
+    @app.route("/guests")
+    def guests():
+        people = get_people()
+        guest_leaderboard = sorted(
+            (PersonLeaderboardRow(person) for person in people),
+            key=lambda row: row.total_gain,
+            reverse=True,
+        )
+        return render_template("guests.html", guest_leaderboard=guest_leaderboard)
+
+    @app.route("/admin")
+    @admin_required
+    def admin_dashboard():
+        visits = sort_visits(Visit.query.all())
+        people = get_people()
+        recent_comments = Comment.query.order_by(Comment.created_at.desc()).limit(8).all()
+        return render_template(
+            "admin_dashboard.html",
+            visits=visits[:8],
+            people=people,
+            recent_comments=recent_comments,
+            user_count=User.query.count(),
         )
 
     @app.route("/login", methods=["GET", "POST"])

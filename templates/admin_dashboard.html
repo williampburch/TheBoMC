@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column admin-portal-page">
+  <section class="panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Admin portal</p>
+        <h2>Data entry and ledger management</h2>
+      </div>
+      <p>Use this area for visit entry, weigh-ins, member updates, and account management. The public homepage stays intentionally lighter.</p>
+    </div>
+    <div class="overview-grid admin-action-grid">
+      <article class="overview-card panel">
+        <p class="eyebrow">Visits</p>
+        <h3>Log a trip</h3>
+        <p>Create or update buffet visits and enter the weigh-ins for everyone who attended.</p>
+        <a href="{{ url_for('create_visit') }}" class="text-link">Open visit entry</a>
+      </article>
+      <article class="overview-card panel">
+        <p class="eyebrow">Members</p>
+        <h3>{{ people|length }} tracked guests</h3>
+        <p>Manage the guest roster used in weigh-in entry.</p>
+        <a href="{{ url_for('list_members') }}" class="text-link">Manage members</a>
+      </article>
+      <article class="overview-card panel">
+        <p class="eyebrow">Admins</p>
+        <h3>{{ user_count }} user accounts</h3>
+        <p>Create admins and keep founder access limited to the right people.</p>
+        <a href="{{ url_for('create_user') }}" class="text-link">Create user</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="dashboard-grid dashboard-grid-wide">
+    <section class="panel">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">Recent trips</p>
+          <h2>Latest entries</h2>
+        </div>
+      </div>
+      <div class="visit-feed compact-feed">
+        {% for visit in visits %}
+        <article class="catalog-card">
+          <p class="eyebrow">{{ visit.label }}</p>
+          <h3>{{ visit.restaurant }}</h3>
+          <p>{{ visit.weights|length }} weigh-ins logged</p>
+          <a href="{{ url_for('edit_visit', visit_id=visit.id) }}" class="text-link">Edit trip</a>
+        </article>
+        {% else %}
+        <article class="catalog-card">
+          <h3>No visits yet</h3>
+          <p>Trips show up here once the ledger starts moving.</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Recent comments</p>
+            <h2>Club chatter</h2>
+          </div>
+        </div>
+        <div class="visit-feed compact-feed">
+          {% for comment in recent_comments %}
+          <article class="catalog-card">
+            <h3>{{ comment.user.username if comment.user else 'Unknown founder' }}</h3>
+            <p>{{ comment.comment }}</p>
+          </article>
+          {% else %}
+          <article class="catalog-card">
+            <h3>No comments yet</h3>
+            <p>Nothing to review here yet.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+</main>
+{% endblock %}

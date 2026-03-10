@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="single-column archive-page">
+  <section class="panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Trip archive</p>
+        <h2>Every buffet visit</h2>
+      </div>
+      <p>The full feed lives here now, so the homepage can stay focused and readable.</p>
+    </div>
+    <div class="visit-feed">
+      {% for visit in visits %}
+      <article class="buffet-card">
+        <div class="buffet-card-top">
+          <div>
+            <p class="eyebrow">{{ visit.label }}</p>
+            <h3>{{ visit.restaurant }}</h3>
+            <p class="location-line">{{ visit.weights|length }} weigh-ins recorded</p>
+          </div>
+          <div class="rating-pill">
+            <span>{{ "%.1f"|format(visit.total_gain) }}</span>
+            <small>lbs gained</small>
+          </div>
+        </div>
+        <div class="weigh-in-table">
+          {% for weight in visit.weights %}
+          <div class="weigh-in-row">
+            <strong>{{ weight.person.full_name if weight.person else 'Unknown guest' }}</strong>
+            <span>{{ "%.1f"|format(weight.before_weight) }} -> {{ "%.1f"|format(weight.after_weight) }}</span>
+            <span class="gain-pill">{{ "+%.1f"|format(weight.gain) }} lb</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <div class="buffet-card-footer">
+          <span>{{ visit.year }} {{ visit.month }}</span>
+          <div class="card-actions">
+            <a href="{{ url_for('edit_visit', visit_id=visit.id) }}">Edit</a>
+            <form action="{{ url_for('delete_visit', visit_id=visit.id) }}" method="post">
+              <button type="submit" class="text-button">Delete</button>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+      </article>
+      {% else %}
+      <article class="empty-state">
+        <h3>No visits yet</h3>
+        <p>The archive fills in once the club logs trips.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}
