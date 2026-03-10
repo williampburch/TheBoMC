@@ -2,12 +2,13 @@
 
 {% block content %}
 <main class="single-column">
-  <section class="panel form-panel">
+  <section class="panel form-panel spotlight-panel">
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Admin workflow</p>
         <h2>{{ "Edit buffet visit" if visit else "Log a new buffet visit" }}</h2>
       </div>
+      <p>Keep the entry clean: select the venue, score the stop, then record each member's weigh-in delta.</p>
     </div>
     <form method="post" class="form-grid">
       <label>
@@ -64,12 +65,13 @@
         <textarea name="notes" rows="5" required>{{ request.form.get('notes', visit.notes if visit else '') }}</textarea>
       </label>
 
-      <section class="weigh-in-editor">
+      <section class="weigh-in-editor panel inset-panel">
         <div class="section-heading compact">
           <div>
             <p class="eyebrow">Before and after</p>
             <h2>Weigh-ins</h2>
           </div>
+          <p>Only fill in members who actually attended the buffet.</p>
         </div>
         <div class="weigh-in-editor-grid">
           {% for member in members %}

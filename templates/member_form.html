@@ -2,12 +2,13 @@
 
 {% block content %}
 <main class="single-column">
-  <section class="panel auth-panel">
+  <section class="panel auth-panel spotlight-panel">
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Roster admin</p>
         <h2>{{ 'Edit member' if member else 'Add member' }}</h2>
       </div>
+      <p>Members drive the weigh-in forms, so keep the roster tight and mark inactive people instead of deleting history.</p>
     </div>
     <form method="post" class="form-grid">
       <label>
