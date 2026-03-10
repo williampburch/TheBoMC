@@ -154,6 +154,7 @@ The repo includes:
 - [nginx/conf.d/tls.conf.example](d:\repos\BoMC\nginx\conf.d\tls.conf.example)
 - [scripts/bootstrap-ubuntu.sh](d:\repos\BoMC\scripts\bootstrap-ubuntu.sh)
 - [scripts/deploy.sh](d:\repos\BoMC\scripts\deploy.sh)
+- [scripts/backup-sqlite.sh](d:\repos\BoMC\scripts\backup-sqlite.sh)
 
 Use the HTTP-only Nginx config first. After the certificate is issued, copy `tls.conf.example` to `tls.conf`, replace the placeholder domain names, and reload the Nginx container.
 
@@ -251,6 +252,30 @@ On the VM:
 ```bash
 cd ~/TheBoMC
 ./scripts/deploy.sh
+```
+
+### SQLite backup
+
+On the VM:
+
+```bash
+cd ~/TheBoMC
+chmod +x scripts/backup-sqlite.sh
+./scripts/backup-sqlite.sh
+```
+
+Backups are written into [backups](d:\repos\BoMC\backups).
+
+The script:
+
+- uses SQLite's backup API from inside the running web container
+- writes timestamped snapshots into `backups/`
+- deletes backups older than `14` days by default
+
+You can override retention:
+
+```bash
+KEEP_DAYS=30 ./scripts/backup-sqlite.sh
 ```
 
 ## Next steps worth doing

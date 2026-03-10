@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       - bomc_data:/app/instance
+      - ./backups:/backups
   nginx:
     image: nginx:1.27-alpine
     container_name: bomc-nginx

@@ -59,7 +59,7 @@ ssh azureuser@<vm-public-ip>
 ```bash
 git clone https://github.com/williampburch/TheBoMC.git
 cd TheBoMC
-chmod +x scripts/bootstrap-ubuntu.sh scripts/deploy.sh
+chmod +x scripts/bootstrap-ubuntu.sh scripts/deploy.sh scripts/backup-sqlite.sh
 ```
 
 ## 4. Run the bootstrap script
@@ -190,7 +190,40 @@ cd ~/TheBoMC
 
 That is your normal redeploy path.
 
-## 13. What you should do on the VM
+## 13. Back up the SQLite database
+
+Manual backup:
+
+```bash
+cd ~/TheBoMC
+./scripts/backup-sqlite.sh
+```
+
+Backups are stored in:
+
+```text
+~/TheBoMC/backups
+```
+
+Default retention is 14 days. To keep more:
+
+```bash
+KEEP_DAYS=30 ./scripts/backup-sqlite.sh
+```
+
+Daily cron example at 2:15 AM:
+
+```bash
+crontab -e
+```
+
+Add:
+
+```cron
+15 2 * * * cd /root/TheBoMC && /bin/bash ./scripts/backup-sqlite.sh >> /var/log/bomc-backup.log 2>&1
+```
+
+## 14. What you should do on the VM
 
 Concrete checklist:
 
@@ -207,8 +240,9 @@ Concrete checklist:
 11. Issue the certificate with Certbot.
 12. Enable `nginx/conf.d/tls.conf`.
 13. Restart Nginx.
+14. Add the daily backup cron job.
 
-## 14. Operational checks
+## 15. Operational checks
 
 Useful commands:
 
@@ -219,7 +253,7 @@ docker compose logs -f nginx
 docker exec -it bomc-web /bin/sh
 ```
 
-## 15. Hardening ideas for AZ-104 practice
+## 16. Hardening ideas for AZ-104 practice
 
 Good follow-up tasks:
 
