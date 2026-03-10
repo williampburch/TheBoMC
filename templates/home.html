@@ -4,21 +4,21 @@
 <main>
   <section class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">Three friends. One rolling spreadsheet of consequences.</p>
-      <h1>A cleaner ledger for buffet wins, losses, and regrettable weight jumps.</h1>
+      <p class="eyebrow">Month-by-month buffet damage</p>
+      <h1>The old scoreboard is back without the spreadsheet archaeology.</h1>
       <p class="hero-text">
-        The club homepage acts like an operating dashboard: strong navigation up top, current stats at a glance, and the full buffet log below when you actually need it.
+        This version stays close to the original club data model: visits are tracked by month and year, restaurants stay as entered, and weigh-ins remain the main event.
       </p>
-      {% if current_user.is_authenticated %}
       <div class="hero-actions">
-        <a class="button button-primary" href="{{ url_for('create_visit') }}">Log New Buffet</a>
-        <a class="button button-secondary" href="{{ url_for('list_members') }}">Review Roster</a>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <a class="button button-primary" href="{{ url_for('create_visit') }}">Log New Visit</a>
+        <a class="button button-secondary" href="{{ url_for('list_members') }}">Review Members</a>
+        {% elif current_user.is_authenticated %}
+        <a class="button button-primary" href="{{ url_for('home') }}#comments">Post a Comment</a>
+        {% else %}
+        <a class="button button-primary" href="{{ url_for('login') }}">Sign In</a>
+        {% endif %}
       </div>
-      {% else %}
-      <div class="hero-actions">
-        <a class="button button-primary" href="{{ url_for('login') }}">Admin Sign In</a>
-      </div>
-      {% endif %}
     </div>
     <aside class="hero-rail panel">
       <div class="hero-rail-heading">
@@ -26,26 +26,26 @@
         <h2>Club pulse</h2>
       </div>
       <div class="scorecard-frame">
-        <p class="scorecard-label">Club average rating</p>
-        <p class="scorecard-value">{{ average_rating }}</p>
-        <p class="scorecard-subtext">points out of 10 across all logged buffets</p>
+        <p class="scorecard-label">Total weight gained</p>
+        <p class="scorecard-value">{{ "%.1f"|format(total_gain) }}</p>
+        <p class="scorecard-subtext">pounds across every recorded buffet</p>
       </div>
       <ul class="stat-grid">
         <li>
           <span>{{ visit_count }}</span>
-          <small>Buffets logged</small>
+          <small>Visits logged</small>
         </li>
         <li>
-          <span>{{ members|length }}</span>
+          <span>{{ people|length }}</span>
           <small>Members tracked</small>
         </li>
         <li>
-          <span>{{ restaurants|length }}</span>
-          <small>Restaurants tracked</small>
+          <span>{{ restaurant_count }}</span>
+          <small>Restaurants named</small>
         </li>
         <li>
-          <span>{{ total_gain }}</span>
-          <small>Total lbs gained</small>
+          <span>{{ comments|length }}</span>
+          <small>Recent comments shown</small>
         </li>
       </ul>
     </aside>
@@ -55,24 +55,29 @@
     <article class="overview-card panel">
       <p class="eyebrow">Current leader</p>
       {% if scoreboard %}
-      <h3>{{ scoreboard[0].visit.restaurant.name }}</h3>
-      <p>{{ "%.1f"|format(scoreboard[0].total_gain) }} total lbs gained at {{ scoreboard[0].visit.restaurant.city }}</p>
+      <h3>{{ scoreboard[0].visit.restaurant }}</h3>
+      <p>{{ "%.1f"|format(scoreboard[0].total_gain) }} lbs gained in {{ scoreboard[0].visit.label }}</p>
       {% else %}
       <h3>No leader yet</h3>
-      <p>The first logged buffet sets the board.</p>
+      <p>The first imported or logged visit will set the board.</p>
+      {% endif %}
+    </article>
+    <article class="overview-card panel">
+      <p class="eyebrow">Latest stop</p>
+      {% if latest_visit %}
+      <h3>{{ latest_visit.restaurant }}</h3>
+      <p>{{ latest_visit.label }} with {{ latest_visit.weights|length }} weigh-ins recorded.</p>
+      {% else %}
+      <h3>No visits yet</h3>
+      <p>The club ledger is still empty.</p>
       {% endif %}
     </article>
     <article class="overview-card panel">
       <p class="eyebrow">Operating mode</p>
-      <h3>{{ "Admin enabled" if current_user.is_authenticated else "Read-only view" }}</h3>
+      <h3>{{ "Admin enabled" if current_user.is_authenticated and current_user.is_admin else "Read-only ledger" }}</h3>
       <p>
-        {{ "Quick actions stay in the top nav so the dashboard can stay clean." if current_user.is_authenticated else "Sign in when you want to add visits, members, or restaurants." }}
+        {{ "Admins can log visits and manage users." if current_user.is_authenticated and current_user.is_admin else "Signed-in members can post comments. Admins manage the scoreboard." }}
       </p>
-    </article>
-    <article class="overview-card panel">
-      <p class="eyebrow">Coverage</p>
-      <h3>{{ restaurants|length }} venues in rotation</h3>
-      <p>Restaurants stay in the database so repeat visits and rankings remain clean and consistent.</p>
     </article>
   </section>
 
@@ -83,38 +88,36 @@
           <p class="eyebrow">Recent recon</p>
           <h2>Visit feed</h2>
         </div>
-        <p>Every visit ties together the venue, score, and member weigh-ins.</p>
+        <p>Each visit records the restaurant name, month, year, and individual gains.</p>
       </div>
       <div class="visit-feed">
         {% for visit in visits %}
         <article class="buffet-card">
           <div class="buffet-card-top">
             <div>
-              <p class="eyebrow">{{ visit.visit_date.strftime("%B %d, %Y") }}</p>
-              <h3>{{ visit.restaurant.name }}</h3>
-              <p class="location-line">{{ visit.restaurant.city }} | {{ visit.restaurant.category }}</p>
+              <p class="eyebrow">{{ visit.label }}</p>
+              <h3>{{ visit.restaurant }}</h3>
+              <p class="location-line">{{ visit.weights|length }} weigh-ins recorded</p>
             </div>
             <div class="rating-pill">
-              <span>{{ "%.1f"|format(visit.overall_rating) }}</span>
-              <small>club score</small>
+              <span>{{ "%.1f"|format(visit.total_gain) }}</span>
+              <small>lbs gained</small>
             </div>
           </div>
 
-          <p class="review-copy">{{ visit.notes }}</p>
-
           <div class="weigh-in-table">
-            {% for weigh_in in visit.weigh_ins %}
+            {% for weight in visit.weights %}
             <div class="weigh-in-row">
-              <strong>{{ weigh_in.member.name }}</strong>
-              <span>{{ "%.1f"|format(weigh_in.before_weight) }} -> {{ "%.1f"|format(weigh_in.after_weight) }}</span>
-              <span class="gain-pill">{{ "+%.1f"|format(weigh_in.gain) }} lb</span>
+              <strong>{{ weight.person.full_name }}</strong>
+              <span>{{ "%.1f"|format(weight.before_weight) }} -> {{ "%.1f"|format(weight.after_weight) }}</span>
+              <span class="gain-pill">{{ "+%.1f"|format(weight.gain) }} lb</span>
             </div>
             {% endfor %}
           </div>
 
           <div class="buffet-card-footer">
-            <span>${{ "%.2f"|format(visit.price_per_person) }} each</span>
-            {% if current_user.is_authenticated %}
+            <span>{{ visit.year }} {{ visit.month }}</span>
+            {% if current_user.is_authenticated and current_user.is_admin %}
             <div class="card-actions">
               <a href="{{ url_for('edit_visit', visit_id=visit.id) }}">Edit</a>
               <form action="{{ url_for('delete_visit', visit_id=visit.id) }}" method="post">
@@ -128,7 +131,7 @@
         <article class="empty-state">
           <p class="eyebrow">No visits yet</p>
           <h3>The first buffet report is still waiting to be logged.</h3>
-          <p>Add members and restaurants, then log the first visit.</p>
+          <p>Import the legacy dump or add the first visit from the admin area.</p>
         </article>
         {% endfor %}
       </div>
@@ -147,8 +150,8 @@
           <article class="score-row">
             <div class="score-rank">{{ loop.index }}</div>
             <div>
-              <h3>{{ row.visit.restaurant.name }}</h3>
-              <p>{{ row.visit.restaurant.city }}</p>
+              <h3>{{ row.visit.restaurant }}</h3>
+              <p>{{ row.visit.label }}</p>
             </div>
             <div class="score-value">{{ "%.1f"|format(row.total_gain) }}</div>
           </article>
@@ -169,22 +172,22 @@
             <p class="eyebrow">The table</p>
             <h2>Tracked members</h2>
           </div>
-          {% if current_user.is_authenticated %}
+          {% if current_user.is_authenticated and current_user.is_admin %}
           <a href="{{ url_for('create_member') }}" class="text-link">Add member</a>
           {% endif %}
         </div>
         <div class="members slim-grid">
-          {% for member in members %}
+          {% for person in people %}
           <article class="member-card">
             <div class="member-badge">{{ loop.index }}</div>
-            <h3>{{ member.name }}</h3>
-            <p class="member-title">{{ 'Active' if member.active else 'Inactive' }}</p>
-            <p>{{ member.weigh_ins|length }} weigh-ins recorded across all buffet visits.</p>
+            <h3>{{ person.full_name }}</h3>
+            <p class="member-title">Legacy member</p>
+            <p>{{ person.weights|length }} weigh-ins recorded across all buffet visits.</p>
           </article>
           {% else %}
           <article class="member-card">
             <h3>No members yet</h3>
-            <p>Create your club roster from the admin area.</p>
+            <p>Create the roster from the admin area.</p>
           </article>
           {% endfor %}
         </div>
@@ -196,22 +199,51 @@
             <p class="eyebrow">Venue tracker</p>
             <h2>Restaurants</h2>
           </div>
-          {% if current_user.is_authenticated %}
-          <a href="{{ url_for('create_restaurant') }}" class="text-link">Add restaurant</a>
-          {% endif %}
         </div>
         <div class="catalog-grid slim-grid">
-          {% for restaurant in restaurants %}
+          {% for restaurant in restaurant_rollup %}
           <article class="catalog-card">
             <h3>{{ restaurant.name }}</h3>
-            <p>{{ restaurant.city }}</p>
-            <p class="member-title">{{ restaurant.category }} | {{ 'Active' if restaurant.active else 'Inactive' }}</p>
-            <p>{{ restaurant.visits|length }} visits logged.</p>
+            <p>{{ restaurant.visit_count }} visits recorded.</p>
           </article>
           {% else %}
           <article class="catalog-card">
             <h3>No restaurants yet</h3>
-            <p>Add your first buffet spot before logging a visit.</p>
+            <p>The venue list builds itself from visit history.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="panel compact-panel" id="comments">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Club chatter</p>
+            <h2>Comments</h2>
+          </div>
+        </div>
+        {% if current_user.is_authenticated %}
+        <form method="post" action="{{ url_for('create_comment') }}" class="form-grid">
+          <label>
+            <span>Leave a comment</span>
+            <textarea name="comment" rows="4" maxlength="500" required></textarea>
+          </label>
+          <button type="submit" class="button button-primary">Post Comment</button>
+        </form>
+        {% else %}
+        <p class="hero-text">Sign in to post comments.</p>
+        {% endif %}
+        <div class="visit-feed">
+          {% for comment in comments %}
+          <article class="catalog-card">
+            <p class="eyebrow">{{ comment.created_at.strftime("%B %d, %Y %I:%M %p") }}</p>
+            <h3>{{ comment.user.username }}</h3>
+            <p>{{ comment.comment }}</p>
+          </article>
+          {% else %}
+          <article class="catalog-card">
+            <h3>No comments yet</h3>
+            <p>The first comment will show up here.</p>
           </article>
           {% endfor %}
         </div>

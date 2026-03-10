@@ -6,7 +6,7 @@
     <title>Buffet of the Month Club</title>
     <meta
       name="description"
-      content="Track buffet visits, ratings, restaurants, members, and weigh-in gains for the Buffet of the Month Club."
+      content="Track buffet visits, member weigh-ins, and club comments for the Buffet of the Month Club."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,7 +22,7 @@
         <div class="brand-lockup">
           <a class="brand-mark" href="{{ url_for('home') }}">BoMC</a>
           <div>
-            <p class="eyebrow">Buffet ledger and weight board</p>
+            <p class="eyebrow">Legacy buffet ledger, cleaned up</p>
             <a class="brand" href="{{ url_for('home') }}">Buffet of the Month Club</a>
           </div>
         </div>
@@ -34,24 +34,27 @@
                 <a href="{{ url_for('home') }}#latest">Visits</a>
                 <a href="{{ url_for('home') }}#scoreboard">Scoreboard</a>
                 <a href="{{ url_for('home') }}#members">Members</a>
-                <a href="{{ url_for('home') }}#restaurants">Restaurants</a>
+                <a href="{{ url_for('home') }}#comments">Comments</a>
               </nav>
               <div class="nav-actions">
-                {% if current_user.is_authenticated %}
+                {% if current_user.is_authenticated and current_user.is_admin %}
                 <a href="{{ url_for('create_visit') }}" class="button button-primary compact-button">New Visit</a>
                 <details class="admin-menu">
                   <summary>Admin</summary>
                   <div class="admin-menu-panel">
                     <a href="{{ url_for('list_members') }}">Manage Members</a>
-                    <a href="{{ url_for('list_restaurants') }}">Manage Restaurants</a>
-                    <a href="{{ url_for('create_user') }}">New Admin</a>
+                    <a href="{{ url_for('create_user') }}">New User</a>
                     <form action="{{ url_for('logout') }}" method="post" class="inline-form">
                       <button type="submit" class="nav-button">Logout</button>
                     </form>
                   </div>
                 </details>
+                {% elif current_user.is_authenticated %}
+                <form action="{{ url_for('logout') }}" method="post" class="inline-form">
+                  <button type="submit" class="button button-secondary compact-button">Logout</button>
+                </form>
                 {% else %}
-                <a href="{{ url_for('login') }}" class="button button-secondary compact-button">Admin Login</a>
+                <a href="{{ url_for('login') }}" class="button button-secondary compact-button">Login</a>
                 {% endif %}
               </div>
             </div>

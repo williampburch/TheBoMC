@@ -1,19 +1,24 @@
 import os
+from calendar import month_name
 from datetime import datetime
 from functools import wraps
 
+import bcrypt
 from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect
+from sqlalchemy import UniqueConstraint, inspect
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, OperationalError
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 
 
 load_dotenv()
+
+MONTH_CHOICES = [month_name[index] for index in range(1, 13)]
+MONTH_TO_NUMBER = {name: index for index, name in enumerate(MONTH_CHOICES, start=1)}
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -23,67 +28,112 @@ login_manager.login_message_category = "warning"
 
 
 class User(UserMixin, db.Model):
+    __tablename__ = "user"
+
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    display_name = db.Column(db.String(120), nullable=False)
-    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column("password", db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_admin = db.Column("administrator", db.Boolean, nullable=False, default=False)
+    comments = db.relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    def check_password(self, password):
+        normalized_hash = self.password_hash
+        if normalized_hash.startswith("$2y$"):
+            normalized_hash = "$2b$" + normalized_hash[4:]
+
+        if normalized_hash.startswith("$2a$") or normalized_hash.startswith("$2b$"):
+            try:
+                return bcrypt.checkpw(password.encode("utf-8"), normalized_hash.encode("utf-8"))
+            except ValueError:
+                return False
+
+        try:
+            return check_password_hash(self.password_hash, password)
+        except (ValueError, TypeError):
+            return False
 
 
-class Restaurant(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), unique=True, nullable=False)
-    city = db.Column(db.String(255), nullable=False)
-    category = db.Column(db.String(120), nullable=False)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    visits = db.relationship("BuffetVisit", back_populates="restaurant")
+class Person(db.Model):
+    __tablename__ = "person"
+    __table_args__ = (UniqueConstraint("first_name", "last_name", name="uq_person_name"),)
+
+    id = db.Column("personid", db.Integer, primary_key=True)
+    first_name = db.Column(db.String(255), nullable=False)
+    last_name = db.Column(db.String(255), nullable=False)
+    weights = db.relationship("WeighIn", back_populates="person")
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
 
 
-class ClubMember(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), unique=True, nullable=False)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    weigh_ins = db.relationship("WeighIn", back_populates="member")
+class Visit(db.Model):
+    __tablename__ = "visit"
 
-
-class BuffetVisit(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False)
-    visit_date = db.Column(db.Date, nullable=False)
-    price_per_person = db.Column(db.Float, nullable=False)
-    overall_rating = db.Column(db.Float, nullable=False)
-    notes = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    restaurant = db.relationship("Restaurant", back_populates="visits")
-    weigh_ins = db.relationship(
+    id = db.Column("visitid", db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.String(20), nullable=False)
+    restaurant = db.Column(db.String(255), nullable=False)
+    weights = db.relationship(
         "WeighIn",
         back_populates="visit",
         cascade="all, delete-orphan",
-        order_by="WeighIn.member_id",
+        order_by="WeighIn.person_id",
     )
+
+    @property
+    def month_number(self):
+        return MONTH_TO_NUMBER.get(self.month, 0)
+
+    @property
+    def label(self):
+        return f"{self.month} {self.year}"
+
+    @property
+    def total_gain(self):
+        return round(sum(weight.gain for weight in self.weights), 1)
 
 
 class WeighIn(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    visit_id = db.Column(db.Integer, db.ForeignKey("buffet_visit.id"), nullable=False)
-    member_id = db.Column(db.Integer, db.ForeignKey("club_member.id"), nullable=False)
-    before_weight = db.Column(db.Float, nullable=False)
-    after_weight = db.Column(db.Float, nullable=False)
-    visit = db.relationship("BuffetVisit", back_populates="weigh_ins")
-    member = db.relationship("ClubMember", back_populates="weigh_ins")
+    __tablename__ = "weight"
+
+    id = db.Column("weightid", db.Integer, primary_key=True)
+    person_id = db.Column(db.Integer, db.ForeignKey("person.personid"), nullable=False)
+    visit_id = db.Column(db.Integer, db.ForeignKey("visit.visitid"), nullable=False)
+    before_weight = db.Column("preweight", db.Float, nullable=False)
+    after_weight = db.Column("postweight", db.Float, nullable=False)
+    person = db.relationship("Person", back_populates="weights")
+    visit = db.relationship("Visit", back_populates="weights")
 
     @property
     def gain(self):
         return round(self.after_weight - self.before_weight, 1)
 
 
+class Comment(db.Model):
+    __tablename__ = "comment"
+
+    id = db.Column("commentid", db.Integer, primary_key=True)
+    user_id = db.Column("userid", db.Integer, db.ForeignKey("user.id"), nullable=False)
+    comment = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user = db.relationship("User", back_populates="comments")
+
+
 class VisitScoreRow:
     def __init__(self, visit):
         self.visit = visit
-        self.total_gain = round(sum(weigh_in.gain for weigh_in in visit.weigh_ins), 1)
+        self.total_gain = visit.total_gain
+
+
+class RestaurantSummary:
+    def __init__(self, name, visit_count):
+        self.name = name
+        self.visit_count = visit_count
 
 
 def create_app():
@@ -124,11 +174,13 @@ def admin_required(view_func):
 
 
 def seed_admin_from_env():
-    admin_email = os.getenv("ADMIN_EMAIL")
-    admin_password = os.getenv("ADMIN_PASSWORD")
-    admin_name = os.getenv("ADMIN_NAME", "Club Commissioner")
+    if os.getenv("SKIP_ADMIN_SEED") == "1":
+        return
 
-    if not admin_email or not admin_password:
+    admin_username = (os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_EMAIL") or "").strip().lower()
+    admin_password = os.getenv("ADMIN_PASSWORD")
+
+    if not admin_username or not admin_password:
         return
 
     inspector = inspect(db.engine)
@@ -136,21 +188,19 @@ def seed_admin_from_env():
         return
 
     try:
-        existing_user = User.query.filter_by(email=admin_email.lower()).first()
+        existing_user = User.query.filter(func.lower(User.username) == admin_username).first()
     except OperationalError:
         return
 
     if existing_user:
+        if not existing_user.is_admin:
+            existing_user.is_admin = True
+            db.session.commit()
         return
 
-    db.session.add(
-        User(
-            email=admin_email.lower(),
-            password_hash=generate_password_hash(admin_password),
-            display_name=admin_name,
-            is_admin=True,
-        )
-    )
+    user = User(username=admin_username, is_admin=True)
+    user.set_password(admin_password)
+    db.session.add(user)
     try:
         db.session.commit()
     except IntegrityError:
@@ -164,97 +214,112 @@ def parse_float(value, fallback=0.0):
         return fallback
 
 
-def parse_date(value):
-    return datetime.strptime(value, "%Y-%m-%d").date()
+def parse_int(value):
+    return int(str(value).strip())
 
 
-def get_active_members():
-    return ClubMember.query.filter_by(active=True).order_by(ClubMember.name.asc()).all()
+def get_people():
+    return Person.query.order_by(func.lower(Person.last_name), func.lower(Person.first_name)).all()
 
 
-def get_available_restaurants():
-    return Restaurant.query.order_by(Restaurant.active.desc(), Restaurant.name.asc()).all()
+def get_weight_map(visit):
+    return {weight.person_id: weight for weight in visit.weights}
 
 
-def get_weigh_in_map(visit):
-    return {weigh_in.member_id: weigh_in for weigh_in in visit.weigh_ins}
+def sort_visits(visits):
+    return sorted(
+        visits,
+        key=lambda visit: (visit.year, visit.month_number, visit.restaurant.lower(), visit.id),
+        reverse=True,
+    )
+
+
+def build_restaurant_rollup(visits):
+    counts = {}
+    for visit in visits:
+        counts[visit.restaurant] = counts.get(visit.restaurant, 0) + 1
+    return [RestaurantSummary(name, count) for name, count in sorted(counts.items(), key=lambda item: item[0].lower())]
 
 
 def validate_visit_form():
-    required_fields = {
-        "restaurant_id": "Restaurant is required.",
-        "visit_date": "Visit date is required.",
-        "price_per_person": "Price per person is required.",
-        "overall_rating": "Overall rating is required.",
-        "notes": "Visit notes are required.",
-    }
-
-    for field_name, error_message in required_fields.items():
-        if not request.form.get(field_name, "").strip():
-            return error_message
+    if not request.form.get("year", "").strip():
+        return "Year is required."
+    if not request.form.get("month", "").strip():
+        return "Month is required."
+    if not request.form.get("restaurant", "").strip():
+        return "Restaurant is required."
 
     try:
-        parse_date(request.form.get("visit_date"))
+        year = parse_int(request.form.get("year"))
     except ValueError:
-        return "Visit date must use the YYYY-MM-DD format."
+        return "Year must be a number."
 
-    restaurant = db.session.get(Restaurant, int(request.form.get("restaurant_id")))
-    if not restaurant:
-        return "Selected restaurant was not found."
+    if year < 1900 or year > 2100:
+        return "Year must be between 1900 and 2100."
+
+    if request.form.get("month") not in MONTH_CHOICES:
+        return "Month selection was invalid."
 
     return None
 
 
-def validate_named_record(field_name, model_name):
-    if not request.form.get(field_name, "").strip():
-        return f"{model_name} name is required."
+def validate_person_form():
+    if not request.form.get("first_name", "").strip():
+        return "First name is required."
+    if not request.form.get("last_name", "").strip():
+        return "Last name is required."
     return None
 
 
-def build_weigh_in_payload(members):
-    weigh_ins = []
-    for member in members:
-        before_value = request.form.get(f"before_{member.id}", "").strip()
-        after_value = request.form.get(f"after_{member.id}", "").strip()
-        if not before_value or not after_value:
+def build_weight_payload(people):
+    weights = []
+    for person in people:
+        before_value = request.form.get(f"before_{person.id}", "").strip()
+        after_value = request.form.get(f"after_{person.id}", "").strip()
+        if not before_value and not after_value:
             continue
-        weigh_ins.append(
+        if not before_value or not after_value:
+            return None, f"Both before and after weights are required for {person.full_name}."
+        weights.append(
             {
-                "member_id": member.id,
+                "person_id": person.id,
                 "before_weight": parse_float(before_value),
                 "after_weight": parse_float(after_value),
             }
         )
-    return weigh_ins
+
+    if not weights:
+        return None, "Enter at least one weigh-in for the visit."
+
+    return weights, None
 
 
 def register_routes(app):
     @app.context_processor
     def inject_defaults():
-        return {
-            "club_members": ClubMember.query.order_by(ClubMember.active.desc(), ClubMember.name.asc()).all()
-        }
+        return {"month_choices": MONTH_CHOICES}
 
     @app.route("/")
     def home():
-        visits = BuffetVisit.query.order_by(BuffetVisit.visit_date.desc()).all()
-        restaurants = Restaurant.query.order_by(Restaurant.name.asc()).all()
-        members = ClubMember.query.order_by(ClubMember.active.desc(), ClubMember.name.asc()).all()
-        visit_count = len(visits)
-        average_rating = db.session.query(func.avg(BuffetVisit.overall_rating)).scalar() or 0
-        average_price = db.session.query(func.avg(BuffetVisit.price_per_person)).scalar() or 0
-        total_gain = db.session.query(func.sum(WeighIn.after_weight - WeighIn.before_weight)).scalar() or 0
+        visits = sort_visits(Visit.query.all())
+        people = get_people()
+        comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
+        restaurant_rollup = build_restaurant_rollup(visits)
+        total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
         scoreboard = sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True)
+        latest_visit = visits[0] if visits else None
+
         return render_template(
             "home.html",
             visits=visits,
-            restaurants=restaurants,
-            members=members,
+            people=people,
+            comments=comments,
             scoreboard=scoreboard,
-            visit_count=visit_count,
-            average_rating=round(average_rating, 1),
-            average_price=round(average_price, 2),
-            total_gain=round(total_gain, 1),
+            latest_visit=latest_visit,
+            restaurant_rollup=restaurant_rollup,
+            visit_count=len(visits),
+            restaurant_count=len(restaurant_rollup),
+            total_gain=total_gain,
         )
 
     @app.route("/login", methods=["GET", "POST"])
@@ -263,14 +328,14 @@ def register_routes(app):
             return redirect(url_for("home"))
 
         if request.method == "POST":
-            email = request.form.get("email", "").strip().lower()
+            username = request.form.get("username", "").strip().lower()
             password = request.form.get("password", "")
-            user = User.query.filter_by(email=email).first()
-            if user and check_password_hash(user.password_hash, password):
+            user = User.query.filter(func.lower(User.username) == username).first()
+            if user and user.check_password(password):
                 login_user(user)
                 flash("Signed in.", "success")
                 return redirect(url_for("home"))
-            flash("Invalid email or password.", "error")
+            flash("Invalid username or password.", "error")
 
         return render_template("login.html")
 
@@ -281,95 +346,87 @@ def register_routes(app):
         flash("Signed out.", "success")
         return redirect(url_for("home"))
 
+    @app.route("/comments", methods=["POST"])
+    @login_required
+    def create_comment():
+        text = request.form.get("comment", "").strip()
+        if not text:
+            flash("Comment text is required.", "error")
+            return redirect(url_for("home") + "#comments")
+        if len(text) > 500:
+            flash("Comments must be 500 characters or fewer.", "error")
+            return redirect(url_for("home") + "#comments")
+
+        db.session.add(Comment(user_id=current_user.id, comment=text))
+        db.session.commit()
+        flash("Comment posted.", "success")
+        return redirect(url_for("home") + "#comments")
+
     @app.route("/admin/visit/new", methods=["GET", "POST"])
     @admin_required
     def create_visit():
-        members = get_active_members()
-        restaurants = get_available_restaurants()
-        if not members:
-            flash("Create at least one active member before logging a visit.", "error")
+        people = get_people()
+        if not people:
+            flash("Create at least one member before logging a visit.", "error")
             return redirect(url_for("list_members"))
-        if not restaurants:
-            flash("Create at least one restaurant before logging a visit.", "error")
-            return redirect(url_for("list_restaurants"))
 
         if request.method == "POST":
             validation_error = validate_visit_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template(
-                    "visit_form.html",
-                    visit=None,
-                    weigh_in_map={},
-                    members=members,
-                    restaurants=restaurants,
-                )
+                return render_template("visit_form.html", visit=None, weight_map={}, people=people)
 
-            visit = BuffetVisit(
-                restaurant_id=int(request.form.get("restaurant_id")),
-                visit_date=parse_date(request.form.get("visit_date")),
-                price_per_person=parse_float(request.form.get("price_per_person")),
-                overall_rating=parse_float(request.form.get("overall_rating")),
-                notes=request.form.get("notes", "").strip(),
+            weights, payload_error = build_weight_payload(people)
+            if payload_error:
+                flash(payload_error, "error")
+                return render_template("visit_form.html", visit=None, weight_map={}, people=people)
+
+            visit = Visit(
+                year=parse_int(request.form.get("year")),
+                month=request.form.get("month"),
+                restaurant=request.form.get("restaurant", "").strip(),
             )
-            for weigh_in_data in build_weigh_in_payload(members):
-                visit.weigh_ins.append(WeighIn(**weigh_in_data))
+            for weight_data in weights:
+                visit.weights.append(WeighIn(**weight_data))
             db.session.add(visit)
             db.session.commit()
             flash("Buffet visit created.", "success")
             return redirect(url_for("home"))
 
-        return render_template(
-            "visit_form.html",
-            visit=None,
-            weigh_in_map={},
-            members=members,
-            restaurants=restaurants,
-        )
+        return render_template("visit_form.html", visit=None, weight_map={}, people=people)
 
     @app.route("/admin/visit/<int:visit_id>/edit", methods=["GET", "POST"])
     @admin_required
     def edit_visit(visit_id):
-        visit = BuffetVisit.query.get_or_404(visit_id)
-        members = get_active_members()
-        restaurants = get_available_restaurants()
+        visit = Visit.query.get_or_404(visit_id)
+        people = get_people()
         if request.method == "POST":
             validation_error = validate_visit_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template(
-                    "visit_form.html",
-                    visit=visit,
-                    weigh_in_map=get_weigh_in_map(visit),
-                    members=members,
-                    restaurants=restaurants,
-                )
+                return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
 
-            visit.restaurant_id = int(request.form.get("restaurant_id"))
-            visit.visit_date = parse_date(request.form.get("visit_date"))
-            visit.price_per_person = parse_float(request.form.get("price_per_person"))
-            visit.overall_rating = parse_float(request.form.get("overall_rating"))
-            visit.notes = request.form.get("notes", "").strip()
-            visit.weigh_ins.clear()
-            for weigh_in_data in build_weigh_in_payload(members):
-                visit.weigh_ins.append(WeighIn(**weigh_in_data))
+            weights, payload_error = build_weight_payload(people)
+            if payload_error:
+                flash(payload_error, "error")
+                return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
 
+            visit.year = parse_int(request.form.get("year"))
+            visit.month = request.form.get("month")
+            visit.restaurant = request.form.get("restaurant", "").strip()
+            visit.weights.clear()
+            for weight_data in weights:
+                visit.weights.append(WeighIn(**weight_data))
             db.session.commit()
             flash("Buffet visit updated.", "success")
             return redirect(url_for("home"))
 
-        return render_template(
-            "visit_form.html",
-            visit=visit,
-            weigh_in_map=get_weigh_in_map(visit),
-            members=members,
-            restaurants=restaurants,
-        )
+        return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
 
     @app.route("/admin/visit/<int:visit_id>/delete", methods=["POST"])
     @admin_required
     def delete_visit(visit_id):
-        visit = BuffetVisit.query.get_or_404(visit_id)
+        visit = Visit.query.get_or_404(visit_id)
         db.session.delete(visit)
         db.session.commit()
         flash("Buffet visit deleted.", "success")
@@ -379,24 +436,21 @@ def register_routes(app):
     @admin_required
     def create_user():
         if request.method == "POST":
-            email = request.form.get("email", "").strip().lower()
+            username = request.form.get("username", "").strip().lower()
             password = request.form.get("password", "")
-            display_name = request.form.get("display_name", "").strip()
+            if not username or not password:
+                flash("Username and password are required.", "error")
+                return render_template("user_form.html")
 
-            if User.query.filter_by(email=email).first():
-                flash("A user with that email already exists.", "error")
-                return redirect(url_for("create_user"))
+            if User.query.filter(func.lower(User.username) == username).first():
+                flash("A user with that username already exists.", "error")
+                return render_template("user_form.html")
 
-            db.session.add(
-                User(
-                    email=email,
-                    password_hash=generate_password_hash(password),
-                    display_name=display_name,
-                    is_admin=True,
-                )
-            )
+            user = User(username=username, is_admin=request.form.get("is_admin") == "on")
+            user.set_password(password)
+            db.session.add(user)
             db.session.commit()
-            flash("Admin user created.", "success")
+            flash("User created.", "success")
             return redirect(url_for("home"))
 
         return render_template("user_form.html")
@@ -404,111 +458,63 @@ def register_routes(app):
     @app.route("/admin/members")
     @admin_required
     def list_members():
-        members = ClubMember.query.order_by(ClubMember.active.desc(), ClubMember.name.asc()).all()
-        return render_template("members.html", members=members)
+        people = get_people()
+        return render_template("members.html", people=people)
 
     @app.route("/admin/members/new", methods=["GET", "POST"])
     @admin_required
     def create_member():
         if request.method == "POST":
-            validation_error = validate_named_record("name", "Member")
+            validation_error = validate_person_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template("member_form.html", member=None)
+                return render_template("member_form.html", person=None)
 
-            name = request.form.get("name", "").strip()
-            if ClubMember.query.filter(func.lower(ClubMember.name) == name.lower()).first():
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            existing = Person.query.filter(
+                func.lower(Person.first_name) == first_name.lower(),
+                func.lower(Person.last_name) == last_name.lower(),
+            ).first()
+            if existing:
                 flash("A member with that name already exists.", "error")
-                return render_template("member_form.html", member=None)
+                return render_template("member_form.html", person=None)
 
-            db.session.add(ClubMember(name=name, active=request.form.get("active") == "on"))
+            db.session.add(Person(first_name=first_name, last_name=last_name))
             db.session.commit()
             flash("Member created.", "success")
             return redirect(url_for("list_members"))
 
-        return render_template("member_form.html", member=None)
+        return render_template("member_form.html", person=None)
 
-    @app.route("/admin/members/<int:member_id>/edit", methods=["GET", "POST"])
+    @app.route("/admin/members/<int:person_id>/edit", methods=["GET", "POST"])
     @admin_required
-    def edit_member(member_id):
-        member = ClubMember.query.get_or_404(member_id)
+    def edit_member(person_id):
+        person = Person.query.get_or_404(person_id)
         if request.method == "POST":
-            validation_error = validate_named_record("name", "Member")
+            validation_error = validate_person_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template("member_form.html", member=member)
+                return render_template("member_form.html", person=person)
 
-            name = request.form.get("name", "").strip()
-            existing = ClubMember.query.filter(func.lower(ClubMember.name) == name.lower(), ClubMember.id != member.id).first()
+            first_name = request.form.get("first_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
+            existing = Person.query.filter(
+                func.lower(Person.first_name) == first_name.lower(),
+                func.lower(Person.last_name) == last_name.lower(),
+                Person.id != person.id,
+            ).first()
             if existing:
                 flash("A member with that name already exists.", "error")
-                return render_template("member_form.html", member=member)
+                return render_template("member_form.html", person=person)
 
-            member.name = name
-            member.active = request.form.get("active") == "on"
+            person.first_name = first_name
+            person.last_name = last_name
             db.session.commit()
             flash("Member updated.", "success")
             return redirect(url_for("list_members"))
 
-        return render_template("member_form.html", member=member)
-
-    @app.route("/admin/restaurants")
-    @admin_required
-    def list_restaurants():
-        restaurants = Restaurant.query.order_by(Restaurant.active.desc(), Restaurant.name.asc()).all()
-        return render_template("restaurants.html", restaurants=restaurants)
-
-    @app.route("/admin/restaurants/new", methods=["GET", "POST"])
-    @admin_required
-    def create_restaurant():
-        if request.method == "POST":
-            if not request.form.get("name", "").strip() or not request.form.get("city", "").strip() or not request.form.get("category", "").strip():
-                flash("Restaurant name, city, and category are required.", "error")
-                return render_template("restaurant_form.html", restaurant=None)
-
-            name = request.form.get("name", "").strip()
-            if Restaurant.query.filter(func.lower(Restaurant.name) == name.lower()).first():
-                flash("A restaurant with that name already exists.", "error")
-                return render_template("restaurant_form.html", restaurant=None)
-
-            db.session.add(
-                Restaurant(
-                    name=name,
-                    city=request.form.get("city", "").strip(),
-                    category=request.form.get("category", "").strip(),
-                    active=request.form.get("active") == "on",
-                )
-            )
-            db.session.commit()
-            flash("Restaurant created.", "success")
-            return redirect(url_for("list_restaurants"))
-
-        return render_template("restaurant_form.html", restaurant=None)
-
-    @app.route("/admin/restaurants/<int:restaurant_id>/edit", methods=["GET", "POST"])
-    @admin_required
-    def edit_restaurant(restaurant_id):
-        restaurant = Restaurant.query.get_or_404(restaurant_id)
-        if request.method == "POST":
-            if not request.form.get("name", "").strip() or not request.form.get("city", "").strip() or not request.form.get("category", "").strip():
-                flash("Restaurant name, city, and category are required.", "error")
-                return render_template("restaurant_form.html", restaurant=restaurant)
-
-            name = request.form.get("name", "").strip()
-            existing = Restaurant.query.filter(func.lower(Restaurant.name) == name.lower(), Restaurant.id != restaurant.id).first()
-            if existing:
-                flash("A restaurant with that name already exists.", "error")
-                return render_template("restaurant_form.html", restaurant=restaurant)
-
-            restaurant.name = name
-            restaurant.city = request.form.get("city", "").strip()
-            restaurant.category = request.form.get("category", "").strip()
-            restaurant.active = request.form.get("active") == "on"
-            db.session.commit()
-            flash("Restaurant updated.", "success")
-            return redirect(url_for("list_restaurants"))
-
-        return render_template("restaurant_form.html", restaurant=restaurant)
+        return render_template("member_form.html", person=person)
 
 
 app = create_app()

@@ -12,64 +12,56 @@ depends_on = None
 
 def upgrade():
     op.create_table(
-        "club_member",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("name", sa.String(length=120), nullable=False),
-        sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
-    )
-    op.create_table(
-        "restaurant",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("city", sa.String(length=255), nullable=False),
-        sa.Column("category", sa.String(length=120), nullable=False),
-        sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
+        "person",
+        sa.Column("personid", sa.Integer(), nullable=False),
+        sa.Column("first_name", sa.String(length=255), nullable=False),
+        sa.Column("last_name", sa.String(length=255), nullable=False),
+        sa.PrimaryKeyConstraint("personid"),
+        sa.UniqueConstraint("first_name", "last_name", name="uq_person_name"),
     )
     op.create_table(
         "user",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("email", sa.String(length=255), nullable=False),
-        sa.Column("password_hash", sa.String(length=255), nullable=False),
-        sa.Column("display_name", sa.String(length=120), nullable=False),
-        sa.Column("is_admin", sa.Boolean(), nullable=False),
+        sa.Column("username", sa.String(length=100), nullable=False),
+        sa.Column("password", sa.String(length=255), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("administrator", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("email"),
+        sa.UniqueConstraint("username"),
     )
     op.create_table(
-        "buffet_visit",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("restaurant_id", sa.Integer(), nullable=False),
-        sa.Column("visit_date", sa.Date(), nullable=False),
-        sa.Column("price_per_person", sa.Float(), nullable=False),
-        sa.Column("overall_rating", sa.Float(), nullable=False),
-        sa.Column("notes", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(["restaurant_id"], ["restaurant.id"]),
-        sa.PrimaryKeyConstraint("id"),
+        "visit",
+        sa.Column("visitid", sa.Integer(), nullable=False),
+        sa.Column("year", sa.Integer(), nullable=False),
+        sa.Column("month", sa.String(length=20), nullable=False),
+        sa.Column("restaurant", sa.String(length=255), nullable=False),
+        sa.PrimaryKeyConstraint("visitid"),
     )
     op.create_table(
-        "weigh_in",
-        sa.Column("id", sa.Integer(), nullable=False),
+        "comment",
+        sa.Column("commentid", sa.Integer(), nullable=False),
+        sa.Column("userid", sa.Integer(), nullable=False),
+        sa.Column("comment", sa.String(length=500), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.ForeignKeyConstraint(["userid"], ["user.id"]),
+        sa.PrimaryKeyConstraint("commentid"),
+    )
+    op.create_table(
+        "weight",
+        sa.Column("weightid", sa.Integer(), nullable=False),
+        sa.Column("person_id", sa.Integer(), nullable=False),
         sa.Column("visit_id", sa.Integer(), nullable=False),
-        sa.Column("member_id", sa.Integer(), nullable=False),
-        sa.Column("before_weight", sa.Float(), nullable=False),
-        sa.Column("after_weight", sa.Float(), nullable=False),
-        sa.ForeignKeyConstraint(["member_id"], ["club_member.id"]),
-        sa.ForeignKeyConstraint(["visit_id"], ["buffet_visit.id"]),
-        sa.PrimaryKeyConstraint("id"),
+        sa.Column("preweight", sa.Float(), nullable=False),
+        sa.Column("postweight", sa.Float(), nullable=False),
+        sa.ForeignKeyConstraint(["person_id"], ["person.personid"]),
+        sa.ForeignKeyConstraint(["visit_id"], ["visit.visitid"]),
+        sa.PrimaryKeyConstraint("weightid"),
     )
 
 
 def downgrade():
-    op.drop_table("weigh_in")
-    op.drop_table("buffet_visit")
+    op.drop_table("weight")
+    op.drop_table("comment")
+    op.drop_table("visit")
     op.drop_table("user")
-    op.drop_table("restaurant")
-    op.drop_table("club_member")
+    op.drop_table("person")

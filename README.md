@@ -1,12 +1,12 @@
 # Buffet of the Month Club
 
-An authenticated Flask app for logging buffet visits, tracking restaurants, managing members, and recording pre-buffet and post-buffet weigh-ins.
+An authenticated Flask app for logging buffet visits, tracking members, recording pre-buffet and post-buffet weigh-ins, and preserving the legacy club comment thread.
 
 ## Current architecture
 
 - Flask server-rendered app
-- SQLAlchemy models for restaurants, members, visits, weigh-ins, and admin users
-- Flask-Login authentication
+- SQLAlchemy models aligned to the legacy site structure: users, members, visits, weights, and comments
+- Flask-Login authentication with bcrypt-compatible legacy password support
 - SQLite for development
 - Postgres-ready via `DATABASE_URL` for Azure or AWS deployment
 - Optional Docker support for container platforms
@@ -20,52 +20,49 @@ An authenticated Flask app for logging buffet visits, tracking restaurants, mana
 - `.env.example`: local configuration template
 - `Dockerfile`: optional container deployment path
 
-## Features in this starter
+## Features in this app
 
-- Admin sign-in
+- Member sign-in
 - Admin creation by an existing admin
-- Manage restaurants from the web UI
 - Manage club members from the web UI
-- Create, edit, and delete buffet visits
+- Create, edit, and delete buffet visits using the legacy month/year format
 - Record per-member before and after buffet weights
 - Display total gain and a buffet-by-buffet scoreboard
+- Preserve and display legacy comments
 
 ## Data model
-
-### Restaurants
-
-Stored in the database with:
-
-- Name
-- City
-- Category
-- Active/inactive status
 
 ### Members
 
 Stored in the database with:
 
-- Name
-- Active/inactive status
+- First name
+- Last name
 
 ### Visits
 
 Each buffet visit stores:
 
-- Restaurant reference
-- Visit date
-- Price per person
-- Overall rating
-- Visit notes
+- Year
+- Month
+- Restaurant name
 
 ### Weigh-ins
 
-Each visit can store weigh-ins for any active member:
+Each visit can store weigh-ins for any member:
 
 - Member reference
 - Before buffet weight
 - After buffet weight
 - Per-person gain
+
+### Comments
+
+Stored in the database with:
+
+- User reference
+- Comment text
+- Created timestamp
 
 ## Local development
 
@@ -91,9 +88,8 @@ Copy-Item .env.example .env
 Set at least these values in `.env`:
 
 - `SECRET_KEY`
-- `ADMIN_EMAIL`
+- `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
-- `ADMIN_NAME`
 
 For local development, the default SQLite connection is already set:
 
@@ -115,6 +111,35 @@ For a fresh local database:
 
 ```powershell
 flask --app app:app db upgrade
+```
+
+### 6. Import the legacy MySQL dump
+
+The old site backup at `buffet_backup.sql` is a MySQL dump. Use the importer script instead of trying to execute the MySQL syntax directly against SQLite or Postgres.
+
+Preview what is in the dump:
+
+```powershell
+python scripts/import_legacy_mysql_dump.py C:\path\to\buffet_backup.sql --summary-only
+```
+
+Import it after `db upgrade`:
+
+```powershell
+python scripts/import_legacy_mysql_dump.py C:\path\to\buffet_backup.sql
+```
+
+By default the importer:
+
+- Imports `Persons`, `Visit`, `Weight`, and `Comments`
+- Imports admin users and any users referenced by comments
+- Skips other legacy users unless you pass `--include-all-users`
+- Preserves the legacy month/year visit format instead of inventing exact dates or placeholder rating fields
+
+Import every legacy user as well:
+
+```powershell
+python scripts/import_legacy_mysql_dump.py C:\path\to\buffet_backup.sql --include-all-users
 ```
 
 ## Deployment recommendation
@@ -280,6 +305,6 @@ KEEP_DAYS=30 ./scripts/backup-sqlite.sh
 
 ## Next steps worth doing
 
-1. Add delete/archive flows for restaurants and members with guardrails around historical data.
+1. Add delete/archive flows for members and user accounts with guardrails around historical data.
 2. Add photo uploads for each buffet visit.
 3. Add role separation if you want non-admin authenticated users later.

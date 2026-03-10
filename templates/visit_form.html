@@ -8,61 +8,36 @@
         <p class="eyebrow">Admin workflow</p>
         <h2>{{ "Edit buffet visit" if visit else "Log a new buffet visit" }}</h2>
       </div>
-      <p>Keep the entry clean: select the venue, score the stop, then record each member's weigh-in delta.</p>
+      <p>The legacy format is simple: restaurant name, month, year, and the weigh-ins for people who were there.</p>
     </div>
     <form method="post" class="form-grid">
-      <label>
-        <span>Restaurant</span>
-        <select name="restaurant_id" required>
-          <option value="">Select a restaurant</option>
-          {% for restaurant in restaurants %}
-          {% set selected_id = request.form.get('restaurant_id', visit.restaurant_id if visit else '') %}
-          <option value="{{ restaurant.id }}" {% if selected_id|string == restaurant.id|string %}selected{% endif %}>
-            {{ restaurant.name }} | {{ restaurant.city }} | {{ restaurant.category }}
-          </option>
-          {% endfor %}
-        </select>
-      </label>
-
       <div class="grid-two">
         <label>
-          <span>Visit date</span>
-          <input
-            type="date"
-            name="visit_date"
-            value="{{ request.form.get('visit_date', visit.visit_date.isoformat() if visit else '') }}"
-            required
-          />
+          <span>Month</span>
+          <select name="month" required>
+            <option value="">Select a month</option>
+            {% set selected_month = request.form.get('month', visit.month if visit else '') %}
+            {% for month_name in month_choices %}
+            <option value="{{ month_name }}" {% if selected_month == month_name %}selected{% endif %}>{{ month_name }}</option>
+            {% endfor %}
+          </select>
         </label>
         <label>
-          <span>Price per person</span>
+          <span>Year</span>
           <input
             type="number"
-            step="0.01"
-            min="0"
-            name="price_per_person"
-            value="{{ request.form.get('price_per_person', visit.price_per_person if visit else '') }}"
+            min="1900"
+            max="2100"
+            name="year"
+            value="{{ request.form.get('year', visit.year if visit else '') }}"
             required
           />
         </label>
       </div>
 
       <label>
-        <span>Overall rating</span>
-        <input
-          type="number"
-          step="0.1"
-          min="0"
-          max="10"
-          name="overall_rating"
-          value="{{ request.form.get('overall_rating', visit.overall_rating if visit else '') }}"
-          required
-        />
-      </label>
-
-      <label>
-        <span>Visit notes</span>
-        <textarea name="notes" rows="5" required>{{ request.form.get('notes', visit.notes if visit else '') }}</textarea>
+        <span>Restaurant</span>
+        <input type="text" name="restaurant" value="{{ request.form.get('restaurant', visit.restaurant if visit else '') }}" required />
       </label>
 
       <section class="weigh-in-editor panel inset-panel">
@@ -74,17 +49,17 @@
           <p>Only fill in members who actually attended the buffet.</p>
         </div>
         <div class="weigh-in-editor-grid">
-          {% for member in members %}
-          {% set existing = weigh_in_map.get(member.id) %}
+          {% for person in people %}
+          {% set existing = weight_map.get(person.id) %}
           <article class="member-input-card">
-            <h3>{{ member.name }}</h3>
+            <h3>{{ person.full_name }}</h3>
             <label>
               <span>Before buffet</span>
               <input
                 type="number"
                 step="0.1"
-                name="before_{{ member.id }}"
-                value="{{ request.form.get('before_' ~ member.id, existing.before_weight if existing else '') }}"
+                name="before_{{ person.id }}"
+                value="{{ request.form.get('before_' ~ person.id, existing.before_weight if existing else '') }}"
               />
             </label>
             <label>
@@ -92,8 +67,8 @@
               <input
                 type="number"
                 step="0.1"
-                name="after_{{ member.id }}"
-                value="{{ request.form.get('after_' ~ member.id, existing.after_weight if existing else '') }}"
+                name="after_{{ person.id }}"
+                value="{{ request.form.get('after_' ~ person.id, existing.after_weight if existing else '') }}"
               />
             </label>
           </article>

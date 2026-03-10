@@ -5,25 +5,25 @@
   <section class="panel auth-panel spotlight-panel">
     <div class="section-heading compact">
       <div>
-        <p class="eyebrow">Admin workflow</p>
-        <h2>Create another admin</h2>
+        <p class="eyebrow">User workflow</p>
+        <h2>Create another user</h2>
       </div>
-      <p>Keep admin accounts limited to people who should actually manage the club ledger.</p>
+      <p>Use this for members who need login access. Keep the administrator flag limited to people who manage the ledger.</p>
     </div>
     <form method="post" class="form-grid">
       <label>
-        <span>Display name</span>
-        <input type="text" name="display_name" required />
-      </label>
-      <label>
-        <span>Email</span>
-        <input type="email" name="email" required />
+        <span>Username</span>
+        <input type="text" name="username" required />
       </label>
       <label>
         <span>Password</span>
         <input type="password" name="password" required />
       </label>
-      <button type="submit" class="button button-primary">Create Admin</button>
+      <label class="checkbox-row">
+        <input type="checkbox" name="is_admin" checked />
+        <span>Administrator</span>
+      </label>
+      <button type="submit" class="button button-primary">Create User</button>
     </form>
   </section>
 </main>

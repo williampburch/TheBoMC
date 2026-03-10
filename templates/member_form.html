@@ -6,28 +6,32 @@
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Roster admin</p>
-        <h2>{{ 'Edit member' if member else 'Add member' }}</h2>
+        <h2>{{ 'Edit member' if person else 'Add member' }}</h2>
       </div>
-      <p>Members drive the weigh-in forms, so keep the roster tight and mark inactive people instead of deleting history.</p>
+      <p>Members stay aligned to the legacy structure: first name and last name only.</p>
     </div>
     <form method="post" class="form-grid">
-      <label>
-        <span>Member name</span>
-        <input type="text" name="name" value="{{ request.form.get('name', member.name if member else '') }}" required />
-      </label>
-      <label class="checkbox-row">
-        <input
-          type="checkbox"
-          name="active"
-          {% if request.method == 'POST' %}
-          {% if request.form.get('active') == 'on' %}checked{% endif %}
-          {% elif member is none or member.active %}
-          checked
-          {% endif %}
-        />
-        <span>Active member</span>
-      </label>
-      <button type="submit" class="button button-primary">{{ 'Save member' if member else 'Create member' }}</button>
+      <div class="grid-two">
+        <label>
+          <span>First name</span>
+          <input
+            type="text"
+            name="first_name"
+            value="{{ request.form.get('first_name', person.first_name if person else '') }}"
+            required
+          />
+        </label>
+        <label>
+          <span>Last name</span>
+          <input
+            type="text"
+            name="last_name"
+            value="{{ request.form.get('last_name', person.last_name if person else '') }}"
+            required
+          />
+        </label>
+      </div>
+      <button type="submit" class="button button-primary">{{ 'Save member' if person else 'Create member' }}</button>
     </form>
   </section>
 </main>

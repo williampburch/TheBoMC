@@ -11,12 +11,11 @@
       <a href="{{ url_for('create_member') }}" class="button button-primary">Add Member</a>
     </div>
     <div class="catalog-grid admin-grid">
-      {% for member in members %}
+      {% for person in people %}
       <article class="catalog-card">
-        <h3>{{ member.name }}</h3>
-        <p class="member-title">{{ 'Active' if member.active else 'Inactive' }}</p>
-        <p>{{ member.weigh_ins|length }} weigh-ins recorded.</p>
-        <a href="{{ url_for('edit_member', member_id=member.id) }}" class="text-link">Edit member</a>
+        <h3>{{ person.full_name }}</h3>
+        <p>{{ person.weights|length }} weigh-ins recorded.</p>
+        <a href="{{ url_for('edit_member', person_id=person.id) }}" class="text-link">Edit member</a>
       </article>
       {% else %}
       <article class="catalog-card">
