@@ -10,7 +10,7 @@
         <p class="eyebrow">Member access</p>
         <h2>Sign in to open the private club pages</h2>
       </div>
-      <p>The splash page stays public. Everything else now requires an account.</p>
+      <p>The public site is browseable. Signing in unlocks the private dashboard and the club comment thread.</p>
     </div>
     <form method="post" class="form-grid">
       <input type="hidden" name="next" value="{{ next_target }}" />
@@ -27,6 +27,10 @@
     <p class="auth-helper">
       Need an account?
       <a href="{{ url_for('register', next=next_target) }}" class="text-link">Create one here</a>
+    </p>
+    <p class="auth-helper">
+      Or stay public:
+      <a href="{{ url_for('club_overview') }}" class="text-link">browse as a guest</a>
     </p>
   </section>
 </main>

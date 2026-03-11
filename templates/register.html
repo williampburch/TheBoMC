@@ -10,7 +10,7 @@
         <p class="eyebrow">Create account</p>
         <h2>Register for private access</h2>
       </div>
-      <p>This creates a standard member account. Admin permissions stay restricted.</p>
+      <p>This creates a standard member account. Admin permissions stay restricted, and the roster can link your account later.</p>
     </div>
     <form method="post" class="form-grid">
       <input type="hidden" name="next" value="{{ next_target }}" />
@@ -31,6 +31,10 @@
     <p class="auth-helper">
       Already have an account?
       <a href="{{ url_for('login', next=next_target) }}" class="text-link">Sign in</a>
+    </p>
+    <p class="auth-helper">
+      Not ready yet?
+      <a href="{{ url_for('club_overview') }}" class="text-link">browse as a guest</a>
     </p>
   </section>
 </main>

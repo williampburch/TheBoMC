@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Map Lab | Buffet of the Month Club{% endblock %}
+
+{% block content %}
+<main class="single-column map-page">
+  <section class="panel spotlight-panel feature-hero">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Map lab</p>
+        <h1>The next version should put buffet history on a real geomap.</h1>
+      </div>
+      <p>
+        The current ledger tracks restaurant names well. The next upgrade should add geography so the club can see where it has
+        been, what is still on deck, and which buffets have earned gold status.
+      </p>
+    </div>
+  </section>
+
+  <section class="dashboard-grid">
+    <section class="panel atlas-panel">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">System preview</p>
+          <h2>Visited buffets should read as gold</h2>
+        </div>
+      </div>
+      <div class="atlas-stage">
+        <div class="atlas-orbit orbit-a"></div>
+        <div class="atlas-orbit orbit-b"></div>
+        <div class="atlas-core">
+          <span class="atlas-dot atlas-dot-visited"></span>
+          <span>Verified club visit</span>
+        </div>
+        <div class="atlas-core">
+          <span class="atlas-dot atlas-dot-candidate"></span>
+          <span>Future buffet target</span>
+        </div>
+        <div class="atlas-core">
+          <span class="atlas-dot atlas-dot-neutral"></span>
+          <span>Unclassified location</span>
+        </div>
+      </div>
+      <p class="panel-note">
+        We need coordinates, status flags, and probably a notes field per restaurant before this becomes a true map instead of a
+        concept board.
+      </p>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Why it matters</p>
+            <h2>What the map should do</h2>
+          </div>
+        </div>
+        <div class="mini-stack">
+          <article class="catalog-card">
+            <h3>See regional coverage</h3>
+            <p>Make it obvious which buffet territory the club has already claimed.</p>
+          </article>
+          <article class="catalog-card">
+            <h3>Track visited vs. target</h3>
+            <p>Gold for confirmed visits, club green for nominated stops still waiting for a trip.</p>
+          </article>
+          <article class="catalog-card">
+            <h3>Support planning</h3>
+            <p>Future versions should let admins plan trips off the same map used for club history.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Current footprint</p>
+            <h2>{{ restaurant_count }} restaurants logged</h2>
+          </div>
+        </div>
+        <div class="mini-stack">
+          {% for restaurant in restaurant_rollup[:6] %}
+          <article class="catalog-card">
+            <h3>{{ restaurant.name }}</h3>
+            <p>{{ restaurant.visit_count }} logged {{ "visit" if restaurant.visit_count == 1 else "visits" }}</p>
+          </article>
+          {% else %}
+          <article class="catalog-card">
+            <h3>No footprint yet</h3>
+            <p>Once the first visit is logged, the map program has raw material to work with.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </aside>
+  </section>
+
+  <section class="overview-grid roadmap-grid">
+    <article class="overview-card">
+      <p class="eyebrow">Phase 1</p>
+      <h3>Add location data</h3>
+      <p>Capture buffet address or coordinates on visit entry so the archive has something mappable.</p>
+    </article>
+    <article class="overview-card">
+      <p class="eyebrow">Phase 2</p>
+      <h3>Build a club atlas</h3>
+      <p>Show all buffets on one interactive map with filters for year, attendance, and total gain.</p>
+    </article>
+    <article class="overview-card">
+      <p class="eyebrow">Phase 3</p>
+      <h3>Highlight visited stops in gold</h3>
+      <p>Separate verified club visits from future candidates so the expansion path is easy to see.</p>
+    </article>
+  </section>
+</main>
+{% endblock %}

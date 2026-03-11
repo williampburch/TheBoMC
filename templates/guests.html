@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Guests | Buffet of the Month Club{% endblock %}
+{% block title %}Leaderboard | Buffet of the Month Club{% endblock %}
 
 {% block content %}
-<main class="single-column">
+<main class="single-column leaderboard-page">
   <section class="panel spotlight-panel">
-    <div class="section-heading compact">
+    <div class="section-heading">
       <div>
-        <p class="eyebrow">Guest leaderboard</p>
-        <h2>Career weight gained</h2>
+        <p class="eyebrow">Club leaderboard</p>
+        <h1>Career weight gained.</h1>
       </div>
-      <p>Every guest ranked by total recorded weight gained across the club history.</p>
+      <p>Every tracked member ranked by total recorded weight gain across club history. Public, because records matter more when they are visible.</p>
     </div>
     <div class="scoreboard-list leaderboard-list">
       {% for row in guest_leaderboard %}
@@ -20,7 +20,12 @@
           <h3>{{ row.person.full_name }}</h3>
           <p>{{ row.visit_count }} visits recorded</p>
         </div>
-        <div class="score-value">{{ "%.1f"|format(row.total_gain) }}</div>
+        <div class="score-meta">
+          {% if row.person.has_admin_account %}
+          <span class="status-pill status-pill-admin">Admin</span>
+          {% endif %}
+          <div class="score-value">{{ "%.1f"|format(row.total_gain) }}</div>
+        </div>
       </article>
       {% else %}
       <article class="score-row">

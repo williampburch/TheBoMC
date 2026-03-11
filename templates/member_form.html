@@ -8,7 +8,7 @@
         <p class="eyebrow">Roster admin</p>
         <h2>{{ 'Edit member' if person else 'Add member' }}</h2>
       </div>
-      <p>Members stay aligned to the legacy structure: first name and last name only.</p>
+      <p>Members still use the legacy first/last name structure, but they can now link to a site account for admin-aware roster sorting.</p>
     </div>
     <form method="post" class="form-grid">
       <div class="grid-two">
@@ -31,6 +31,18 @@
           />
         </label>
       </div>
+      <label>
+        <span>Linked account</span>
+        {% set selected_account_id = request.form.get('account_id', person.account_id if person and person.account_id else '') %}
+        <select name="account_id">
+          <option value="">No linked account</option>
+          {% for account in account_choices %}
+          <option value="{{ account.id }}" {% if selected_account_id|string == account.id|string %}selected{% endif %}>
+            {{ account.username }}{% if account.is_admin %} · admin{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
       <button type="submit" class="button button-primary">{{ 'Save member' if person else 'Create member' }}</button>
     </form>
   </section>

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Club | Buffet of the Month Club{% endblock %}
+
+{% block content %}
+<main class="single-column club-page">
+  <section class="panel spotlight-panel feature-hero">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Club charter</p>
+        <h1>The buffet is the event. The ledger is the institution.</h1>
+      </div>
+      <p>
+        We treat this like a real club: buffet selection matters, attendance matters, weigh-ins matter, and the record has to
+        stay clean.
+      </p>
+    </div>
+    <div class="overview-grid">
+      <article class="overview-card">
+        <p class="eyebrow">Scale</p>
+        <h3>{{ visit_count }}</h3>
+        <p>Recorded monthly buffet missions in the ledger.</p>
+      </article>
+      <article class="overview-card">
+        <p class="eyebrow">Roster</p>
+        <h3>{{ people_count }}</h3>
+        <p>Tracked members with a place in club history.</p>
+      </article>
+      <article class="overview-card">
+        <p class="eyebrow">Coverage</p>
+        <h3>{{ restaurant_count }}</h3>
+        <p>Unique buffet stops logged so far.</p>
+      </article>
+      <article class="overview-card">
+        <p class="eyebrow">Output</p>
+        <h3>{{ "%.1f"|format(total_gain) }}</h3>
+        <p>Total pounds of verified buffet gain.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="dashboard-grid">
+    <section class="panel">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">Operating cycle</p>
+          <h2>How a club month works</h2>
+        </div>
+      </div>
+      <div class="timeline-list">
+        <article class="timeline-card">
+          <p class="eyebrow">1. Selection</p>
+          <h3>Pick the buffet worth documenting</h3>
+          <p>The stop has to be worthy of a club outing, not just convenient.</p>
+        </article>
+        <article class="timeline-card">
+          <p class="eyebrow">2. Attendance</p>
+          <h3>Show up hungry and on purpose</h3>
+          <p>The club is built on actual turnout, not hypothetical enthusiasm.</p>
+        </article>
+        <article class="timeline-card">
+          <p class="eyebrow">3. Weigh-in</p>
+          <h3>Record the before and after honestly</h3>
+          <p>The numbers are the point. We keep them because the ritual means more when it is measured.</p>
+        </article>
+        <article class="timeline-card">
+          <p class="eyebrow">4. Archive</p>
+          <h3>Preserve the visit</h3>
+          <p>Each trip becomes part of the permanent ledger: restaurant, month, year, attendance, and total gain.</p>
+        </article>
+      </div>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Why it exists</p>
+            <h2>A serious club with absurd subject matter</h2>
+          </div>
+        </div>
+        <div class="mini-stack">
+          <article class="catalog-card">
+            <h3>Largest buffet club we know of</h3>
+            <p>Until a more disciplined rival appears, we are claiming the title.</p>
+          </article>
+          <article class="catalog-card">
+            <h3>Structured recordkeeping</h3>
+            <p>The site exists so club history is searchable, ranked, and harder to lose.</p>
+          </article>
+          <article class="catalog-card">
+            <h3>Public pride, private tools</h3>
+            <p>Guests can browse the story. Members get the private dashboard and comment thread.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Current leaders</p>
+            <h2>Club pressure points</h2>
+          </div>
+        </div>
+        <div class="mini-stack">
+          <article class="catalog-card">
+            <p class="eyebrow">Latest visit</p>
+            <h3>{{ latest_visit.restaurant if latest_visit else "No trip logged yet" }}</h3>
+            <p>
+              {% if latest_visit %}
+              {{ latest_visit.label }} generated {{ "%.1f"|format(latest_visit.total_gain) }} pounds of total gain.
+              {% else %}
+              The first logged visit will establish the modern era.
+              {% endif %}
+            </p>
+          </article>
+          <article class="catalog-card">
+            <p class="eyebrow">Career leader</p>
+            <h3>{{ top_guest.person.full_name if top_guest else "Open category" }}</h3>
+            <p>
+              {% if top_guest %}
+              {{ "%.1f"|format(top_guest.total_gain) }} pounds across {{ top_guest.visit_count }} visits.
+              {% else %}
+              Weigh-ins will eventually decide this.
+              {% endif %}
+            </p>
+          </article>
+        </div>
+      </section>
+    </aside>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Buffet footprint</p>
+        <h2>Restaurants already in the ledger</h2>
+      </div>
+      <a href="{{ url_for('map_lab') }}" class="text-link">See the map plan</a>
+    </div>
+    <div class="catalog-grid">
+      {% for restaurant in restaurant_rollup[:8] %}
+      <article class="catalog-card">
+        <h3>{{ restaurant.name }}</h3>
+        <p>{{ restaurant.visit_count }} logged {{ "visit" if restaurant.visit_count == 1 else "visits" }}</p>
+      </article>
+      {% else %}
+      <article class="catalog-card">
+        <h3>No restaurants yet</h3>
+        <p>The club footprint starts when the first buffet mission is logged.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

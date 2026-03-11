@@ -4,39 +4,41 @@
 
 {% block content %}
 <main class="single-column dashboard-page">
-  <section class="panel dashboard-hero">
+  <section class="panel spotlight-panel dashboard-hero">
     <div class="section-heading">
       <div>
         <p class="eyebrow">Members only</p>
-        <h1>Stats and club history, without the clutter.</h1>
+        <h1>Private club view for people who are actually in the room.</h1>
       </div>
-      <div class="hero-actions">
-        <a class="button button-secondary" href="{{ url_for('visits_archive') }}">Trip archive</a>
-        {% if current_user.is_admin %}
-        <a class="button button-primary" href="{{ url_for('admin_dashboard') }}">Admin portal</a>
-        {% endif %}
-      </div>
+      <p>Public pages carry the club story. This space is for the running ledger, comment thread, and current-state readout.</p>
+    </div>
+    <div class="hero-actions">
+      <a class="button button-secondary" href="{{ url_for('visits_archive') }}">Trip archive</a>
+      <a class="button button-secondary" href="{{ url_for('guests') }}">Leaderboard</a>
+      {% if current_user.is_admin %}
+      <a class="button button-primary" href="{{ url_for('admin_dashboard') }}">Admin portal</a>
+      {% endif %}
     </div>
     <div class="overview-grid">
       <article class="overview-card">
         <p class="eyebrow">Trips logged</p>
         <h3>{{ visit_count }}</h3>
-        <p>Total buffet visits currently in the ledger.</p>
+        <p>Total buffet missions currently on the board.</p>
       </article>
       <article class="overview-card">
         <p class="eyebrow">Guests tracked</p>
         <h3>{{ people_count }}</h3>
-        <p>Members with at least one place on the roster.</p>
+        <p>Rostered members with a place in the archive.</p>
       </article>
       <article class="overview-card">
         <p class="eyebrow">Restaurants</p>
         <h3>{{ restaurant_count }}</h3>
-        <p>Unique stops recorded across club history.</p>
+        <p>Unique buffet stops across club history.</p>
       </article>
       <article class="overview-card">
         <p class="eyebrow">Total gain</p>
         <h3>{{ "%.1f"|format(total_gain) }}</h3>
-        <p>Cumulative pounds logged in recorded weigh-ins.</p>
+        <p>Cumulative pounds logged in verified weigh-ins.</p>
       </article>
     </div>
   </section>
@@ -48,7 +50,7 @@
           <p class="eyebrow">Trendline</p>
           <h2>Recent trip gains</h2>
         </div>
-        <p>The latest six visits, reduced to one quick chart.</p>
+        <p>The latest six logged trips, reduced to one quick chart.</p>
       </div>
       <div class="trend-chart">
         {% for item in monthly_trend %}
@@ -203,7 +205,7 @@
           {% else %}
           <article class="catalog-card">
             <h3>No comments yet</h3>
-            <p>The first signed-in member can start the thread.</p>
+            <p>The first signed-in member can start the field notes.</p>
           </article>
           {% endfor %}
         </div>

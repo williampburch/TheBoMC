@@ -3,21 +3,27 @@
 {% block title %}Founders | Buffet of the Month Club{% endblock %}
 
 {% block content %}
-<main class="single-column">
+<main class="single-column founders-page">
   <section class="panel spotlight-panel">
-    <div class="section-heading compact">
+    <div class="section-heading">
       <div>
         <p class="eyebrow">Founders</p>
-        <h2>The admin roster</h2>
+        <h1>The admin roster.</h1>
       </div>
-      <p>Founders are the admins who manage visit entry, weigh-ins, account access, and the club ledger.</p>
+      <p>Founders are the admins who manage visit entry, weigh-ins, account access, and the integrity of the club ledger.</p>
     </div>
     <div class="catalog-grid admin-grid">
       {% for founder in founders %}
       <article class="catalog-card">
         <h3>{{ founder.username }}</h3>
-        <p>Administrator account</p>
-        <p class="member-title">Founder</p>
+        <p>
+          {% if founder.member_profile %}
+          Linked member: {{ founder.member_profile.full_name }}
+          {% else %}
+          Administrator account
+          {% endif %}
+        </p>
+        <p class="member-title">Founder steward</p>
       </article>
       {% else %}
       <article class="catalog-card">
@@ -34,6 +40,9 @@
         <p class="eyebrow">Club chatter</p>
         <h2>Recent comments</h2>
       </div>
+      {% if not current_user.is_authenticated %}
+      <a href="{{ url_for('login', next=url_for('founders')) }}" class="text-link">Sign in to comment</a>
+      {% endif %}
     </div>
     <div class="visit-feed compact-feed">
       {% for comment in comments %}

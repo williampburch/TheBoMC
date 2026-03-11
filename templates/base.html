@@ -6,12 +6,12 @@
     <title>{% block title %}Buffet of the Month Club{% endblock %}</title>
     <meta
       name="description"
-      content="Track buffet visits, member weigh-ins, and club stats for the Buffet of the Month Club."
+      content="The Buffet of the Month Club ledger for monthly buffet visits, weigh-ins, club history, and founder oversight."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Manrope:wght@400;500;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
@@ -19,45 +19,46 @@
   <body>
     <div class="page-shell">
       <header class="site-header">
-        <a class="brand-lockup" href="{{ url_for('home') }}">
-          <span class="brand-mark">BoMC</span>
-          <span>
-            <span class="eyebrow">Buffet of the Month Club</span>
-            <span class="brand">Club Ledger</span>
-          </span>
-        </a>
+        <div class="brand-strip">
+          <a class="brand-lockup" href="{{ url_for('home') }}">
+            <span class="brand-mark">BoMC</span>
+            <span>
+              <span class="eyebrow">Buffet of the Month Club</span>
+              <span class="brand">Largest buffet club we are aware of</span>
+            </span>
+          </a>
+          <p class="brand-copy">Monthly buffet intelligence, weigh-ins, records, and club stewardship.</p>
+        </div>
         <details class="nav-drawer">
           <summary class="nav-toggle">Menu</summary>
           <div class="nav-drawer-panel">
             <div class="nav-cluster">
-              <nav class="site-nav">
-                {% if current_user.is_authenticated %}
-                <a class="{% if request.endpoint == 'home' %}is-active{% endif %}" href="{{ url_for('home') }}">Splash</a>
-                <a class="{% if request.endpoint == 'dashboard' %}is-active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a class="{% if request.endpoint == 'visits_archive' %}is-active{% endif %}" href="{{ url_for('visits_archive') }}">Trips</a>
-                <a class="{% if request.endpoint == 'guests' %}is-active{% endif %}" href="{{ url_for('guests') }}">Guests</a>
+              <nav class="site-nav" aria-label="Primary">
+                <a class="{% if request.endpoint == 'home' %}is-active{% endif %}" href="{{ url_for('home') }}">Home</a>
+                <a class="{% if request.endpoint == 'club_overview' %}is-active{% endif %}" href="{{ url_for('club_overview') }}">Club</a>
+                <a class="{% if request.endpoint == 'visits_archive' %}is-active{% endif %}" href="{{ url_for('visits_archive') }}">Archive</a>
+                <a class="{% if request.endpoint == 'guests' %}is-active{% endif %}" href="{{ url_for('guests') }}">Leaderboard</a>
                 <a class="{% if request.endpoint == 'founders' %}is-active{% endif %}" href="{{ url_for('founders') }}">Founders</a>
+                <a class="{% if request.endpoint == 'map_lab' %}is-active{% endif %}" href="{{ url_for('map_lab') }}">Map Lab</a>
+                {% if current_user.is_authenticated %}
+                <a class="{% if request.endpoint == 'dashboard' %}is-active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
+                {% endif %}
                 {% if current_user.is_authenticated and current_user.is_admin %}
                 <a class="{% if request.endpoint in ['admin_dashboard', 'create_visit', 'edit_visit', 'create_user', 'list_users', 'edit_user', 'list_members', 'create_member', 'edit_member'] %}is-active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>
-                {% endif %}
-                {% else %}
-                <a class="{% if request.endpoint == 'home' %}is-active{% endif %}" href="{{ url_for('home') }}">Splash</a>
-                <a href="{{ url_for('home') }}#guest-mode">Browse as guest</a>
-                <a href="{{ url_for('home') }}#club-story">What we do</a>
                 {% endif %}
               </nav>
               <div class="nav-actions">
                 {% if current_user.is_authenticated %}
                 <span class="session-pill">
                   {{ current_user.username }}
-                  {% if current_user.is_admin %}<span>admin</span>{% endif %}
+                  <span>{{ "admin account" if current_user.is_admin else "member account" }}</span>
                 </span>
                 <form action="{{ url_for('logout') }}" method="post" class="inline-form">
                   <button type="submit" class="button button-secondary compact-button">Sign out</button>
                 </form>
                 {% else %}
-                <a href="{{ url_for('login') }}" class="text-link nav-auth-link">Sign in</a>
-                <a href="{{ url_for('register') }}" class="button button-primary compact-button">Create account</a>
+                <a href="{{ url_for('login') }}" class="button button-secondary compact-button">Sign in</a>
+                <a href="{{ url_for('register') }}" class="button button-primary compact-button">Register</a>
                 {% endif %}
               </div>
             </div>

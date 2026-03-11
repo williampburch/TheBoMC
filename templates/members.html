@@ -5,19 +5,37 @@
 {% block content %}
 <main class="single-column">
   <section class="panel form-panel spotlight-panel">
-    <div class="section-heading compact">
+    <div class="section-heading">
       <div>
         <p class="eyebrow">Roster admin</p>
-        <h2>Club members</h2>
+        <h1>Club members</h1>
       </div>
       <a href="{{ url_for('create_member') }}" class="button button-primary">Add Member</a>
     </div>
-    <div class="catalog-grid admin-grid">
-      {% for person in people %}
-      <article class="catalog-card">
-        <h3>{{ person.full_name }}</h3>
-        <p>{{ person.weights|length }} weigh-ins recorded.</p>
-        <a href="{{ url_for('edit_member', person_id=person.id) }}" class="text-link">Edit member</a>
+    <p class="section-copy">Sorted by admin-linked members first, then by weigh-in count descending, then alphabetical order.</p>
+    <div class="roster-list">
+      {% for row in member_roster %}
+      <article class="roster-row">
+        <div class="roster-primary">
+          <div class="member-badge">{{ loop.index }}</div>
+          <div>
+            <h3>{{ row.person.full_name }}</h3>
+            <p>
+              {% if row.account %}
+              Linked account: {{ row.account.username }}
+              {% else %}
+              No linked login account
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="roster-meta">
+          <span class="status-pill{% if row.is_admin %} status-pill-admin{% endif %}">
+            {{ "Admin" if row.is_admin else "Member" }}
+          </span>
+          <span class="metric-pill">{{ row.weigh_in_count }} weigh-ins</span>
+          <a href="{{ url_for('edit_member', person_id=row.person.id) }}" class="text-link">Edit member</a>
+        </div>
       </article>
       {% else %}
       <article class="catalog-card">

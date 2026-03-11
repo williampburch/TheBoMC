@@ -37,6 +37,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     is_admin = db.Column("administrator", db.Boolean, nullable=False, default=False)
     comments = db.relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+    member_profile = db.relationship("Person", back_populates="account", uselist=False)
 
     def set_password(self, password):
         self.password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -65,6 +66,8 @@ class Person(db.Model):
     id = db.Column("personid", db.Integer, primary_key=True)
     first_name = db.Column(db.String(255), nullable=False)
     last_name = db.Column(db.String(255), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=True)
+    account = db.relationship("User", back_populates="member_profile")
     weights = db.relationship("WeighIn", back_populates="person")
 
     @property
@@ -74,6 +77,14 @@ class Person(db.Model):
     @property
     def career_gain(self):
         return round(sum(weight.gain for weight in self.weights), 1)
+
+    @property
+    def weigh_in_count(self):
+        return len(self.weights)
+
+    @property
+    def has_admin_account(self):
+        return bool(self.account and self.account.is_admin)
 
 
 class Visit(db.Model):
@@ -146,6 +157,14 @@ class PersonLeaderboardRow:
         self.person = person
         self.total_gain = person.career_gain
         self.visit_count = len({weight.visit_id for weight in person.weights})
+
+
+class MemberRosterRow:
+    def __init__(self, person):
+        self.person = person
+        self.account = person.account
+        self.weigh_in_count = person.weigh_in_count
+        self.is_admin = person.has_admin_account
 
 
 def create_app():
@@ -237,6 +256,13 @@ def parse_int(value):
     return int(str(value).strip())
 
 
+def parse_optional_int(value):
+    normalized = str(value or "").strip()
+    if not normalized:
+        return None
+    return int(normalized)
+
+
 def is_safe_redirect_target(target):
     if not target:
         return False
@@ -260,6 +286,39 @@ def get_users():
     return User.query.order_by(func.lower(User.username)).all()
 
 
+def get_member_account_options(current_person=None):
+    linked_user_ids = {
+        person.account_id for person in Person.query.filter(Person.account_id.isnot(None)).all() if person.account_id
+    }
+    if current_person and current_person.account_id:
+        linked_user_ids.discard(current_person.account_id)
+
+    return [user for user in get_users() if user.id not in linked_user_ids]
+
+
+def resolve_member_account(account_value, current_person=None):
+    try:
+        account_id = parse_optional_int(account_value)
+    except ValueError:
+        return None, "Selected account was invalid."
+
+    if account_id is None:
+        return None, None
+
+    account = db.session.get(User, account_id)
+    if not account:
+        return None, "Selected account was invalid."
+
+    existing_link = Person.query.filter(Person.account_id == account_id)
+    if current_person:
+        existing_link = existing_link.filter(Person.id != current_person.id)
+
+    if existing_link.first():
+        return None, "That account is already linked to another member."
+
+    return account, None
+
+
 def get_weight_map(visit):
     return {weight.person_id: weight for weight in visit.weights}
 
@@ -272,11 +331,67 @@ def sort_visits(visits):
     )
 
 
+def build_guest_leaderboard(people):
+    return sorted(
+        (PersonLeaderboardRow(person) for person in people),
+        key=lambda row: (
+            -row.total_gain,
+            -row.visit_count,
+            row.person.last_name.lower(),
+            row.person.first_name.lower(),
+        ),
+    )
+
+
+def build_member_roster(people):
+    return sorted(
+        (MemberRosterRow(person) for person in people),
+        key=lambda row: (
+            0 if row.is_admin else 1,
+            -row.weigh_in_count,
+            row.person.last_name.lower(),
+            row.person.first_name.lower(),
+        ),
+    )
+
+
 def build_restaurant_rollup(visits):
     counts = {}
     for visit in visits:
         counts[visit.restaurant] = counts.get(visit.restaurant, 0) + 1
     return [RestaurantSummary(name, count) for name, count in sorted(counts.items(), key=lambda item: item[0].lower())]
+
+
+def build_site_snapshot():
+    visits = sort_visits(Visit.query.all())
+    people = get_people()
+    founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
+    restaurant_rollup = build_restaurant_rollup(visits)
+    total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
+    latest_visit = visits[0] if visits else None
+    guest_leaderboard = build_guest_leaderboard(people)
+    member_roster = build_member_roster(people)
+    monthly_trend = [{"label": visit.label, "gain": visit.total_gain} for visit in visits[:6]]
+    max_monthly_gain = max((item["gain"] for item in monthly_trend), default=0)
+
+    return {
+        "visits": visits,
+        "people": people,
+        "founders": founders,
+        "restaurant_rollup": restaurant_rollup,
+        "total_gain": total_gain,
+        "latest_visit": latest_visit,
+        "guest_leaderboard": guest_leaderboard,
+        "top_guest": guest_leaderboard[0] if guest_leaderboard else None,
+        "member_roster": member_roster,
+        "monthly_trend": monthly_trend,
+        "max_monthly_gain": max_monthly_gain,
+        "scoreboard": sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True),
+        "visit_count": len(visits),
+        "people_count": len(people),
+        "restaurant_count": len(restaurant_rollup),
+        "founder_count": len(founders),
+    }
 
 
 def validate_visit_form():
@@ -339,104 +454,51 @@ def register_routes(app):
 
     @app.route("/")
     def home():
-        visits = sort_visits(Visit.query.all())
-        people = get_people()
-        founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
-        restaurant_rollup = build_restaurant_rollup(visits)
-        total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
-        latest_visit = visits[0] if visits else None
-        guest_leaderboard = sorted(
-            (PersonLeaderboardRow(person) for person in people),
-            key=lambda row: row.total_gain,
-            reverse=True,
-        )
-        top_guest = guest_leaderboard[0] if guest_leaderboard else None
+        return render_template("home.html", **build_site_snapshot())
 
-        return render_template(
-            "home.html",
-            founders=founders,
-            latest_visit=latest_visit,
-            top_guest=top_guest,
-            restaurant_rollup=restaurant_rollup,
-            visit_count=len(visits),
-            people_count=len(people),
-            restaurant_count=len(restaurant_rollup),
-            total_gain=total_gain,
-        )
+    @app.route("/club")
+    def club_overview():
+        return render_template("club.html", **build_site_snapshot())
 
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        visits = sort_visits(Visit.query.all())
-        people = get_people()
-        founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
+        snapshot = build_site_snapshot()
         comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
-        restaurant_rollup = build_restaurant_rollup(visits)
-        total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
-        scoreboard = sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True)
-        latest_visit = visits[0] if visits else None
-        guest_leaderboard = sorted(
-            (PersonLeaderboardRow(person) for person in people),
-            key=lambda row: row.total_gain,
-            reverse=True,
-        )
-        monthly_trend = [{"label": visit.label, "gain": visit.total_gain} for visit in visits[:6]]
-        max_monthly_gain = max((item["gain"] for item in monthly_trend), default=0)
-        top_guest = guest_leaderboard[0] if guest_leaderboard else None
-
-        return render_template(
-            "dashboard.html",
-            founders=founders,
-            comments=comments,
-            scoreboard=scoreboard,
-            latest_visit=latest_visit,
-            top_guest=top_guest,
-            guest_leaderboard=guest_leaderboard,
-            monthly_trend=monthly_trend,
-            max_monthly_gain=max_monthly_gain,
-            restaurant_rollup=restaurant_rollup,
-            visit_count=len(visits),
-            people_count=len(people),
-            restaurant_count=len(restaurant_rollup),
-            total_gain=total_gain,
-        )
+        return render_template("dashboard.html", comments=comments, **snapshot)
 
     @app.route("/visits")
-    @login_required
     def visits_archive():
-        visits = sort_visits(Visit.query.all())
-        scoreboard = sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True)
-        return render_template("visits.html", visits=visits, scoreboard=scoreboard)
+        snapshot = build_site_snapshot()
+        return render_template("visits.html", visits=snapshot["visits"], scoreboard=snapshot["scoreboard"])
 
     @app.route("/founders")
-    @login_required
     def founders():
-        founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
+        snapshot = build_site_snapshot()
         latest_comments = Comment.query.order_by(Comment.created_at.desc()).limit(12).all()
-        return render_template("founders.html", founders=founders, comments=latest_comments)
+        return render_template("founders.html", comments=latest_comments, **snapshot)
 
     @app.route("/guests")
-    @login_required
     def guests():
-        people = get_people()
-        guest_leaderboard = sorted(
-            (PersonLeaderboardRow(person) for person in people),
-            key=lambda row: row.total_gain,
-            reverse=True,
-        )
-        return render_template("guests.html", guest_leaderboard=guest_leaderboard)
+        snapshot = build_site_snapshot()
+        return render_template("guests.html", guest_leaderboard=snapshot["guest_leaderboard"])
+
+    @app.route("/map")
+    def map_lab():
+        snapshot = build_site_snapshot()
+        return render_template("map.html", **snapshot)
 
     @app.route("/admin")
     @admin_required
     def admin_dashboard():
-        visits = sort_visits(Visit.query.all())
-        people = get_people()
+        snapshot = build_site_snapshot()
         users = get_users()
         recent_comments = Comment.query.order_by(Comment.created_at.desc()).limit(8).all()
         return render_template(
             "admin_dashboard.html",
-            visits=visits[:8],
-            people=people,
+            visits=snapshot["visits"][:8],
+            member_roster=snapshot["member_roster"],
+            people_count=snapshot["people_count"],
             users=users[:6],
             recent_comments=recent_comments,
             user_count=len(users),
@@ -663,47 +725,64 @@ def register_routes(app):
     @app.route("/admin/members")
     @admin_required
     def list_members():
-        people = get_people()
-        return render_template("members.html", people=people)
+        return render_template("members.html", member_roster=build_member_roster(get_people()))
 
     @app.route("/admin/members/new", methods=["GET", "POST"])
     @admin_required
     def create_member():
+        account_choices = get_member_account_options()
         if request.method == "POST":
             validation_error = validate_person_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template("member_form.html", person=None)
+                return render_template("member_form.html", person=None, account_choices=account_choices)
 
             first_name = request.form.get("first_name", "").strip()
             last_name = request.form.get("last_name", "").strip()
+            account, account_error = resolve_member_account(request.form.get("account_id"))
+            if account_error:
+                flash(account_error, "error")
+                return render_template("member_form.html", person=None, account_choices=account_choices)
+
             existing = Person.query.filter(
                 func.lower(Person.first_name) == first_name.lower(),
                 func.lower(Person.last_name) == last_name.lower(),
             ).first()
             if existing:
                 flash("A member with that name already exists.", "error")
-                return render_template("member_form.html", person=None)
+                return render_template("member_form.html", person=None, account_choices=account_choices)
 
-            db.session.add(Person(first_name=first_name, last_name=last_name))
+            db.session.add(
+                Person(
+                    first_name=first_name,
+                    last_name=last_name,
+                    account_id=account.id if account else None,
+                )
+            )
             db.session.commit()
             flash("Member created.", "success")
             return redirect(url_for("list_members"))
 
-        return render_template("member_form.html", person=None)
+        return render_template("member_form.html", person=None, account_choices=account_choices)
 
     @app.route("/admin/members/<int:person_id>/edit", methods=["GET", "POST"])
     @admin_required
     def edit_member(person_id):
         person = Person.query.get_or_404(person_id)
+        account_choices = get_member_account_options(person)
         if request.method == "POST":
             validation_error = validate_person_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template("member_form.html", person=person)
+                return render_template("member_form.html", person=person, account_choices=account_choices)
 
             first_name = request.form.get("first_name", "").strip()
             last_name = request.form.get("last_name", "").strip()
+            account, account_error = resolve_member_account(request.form.get("account_id"), current_person=person)
+            if account_error:
+                flash(account_error, "error")
+                return render_template("member_form.html", person=person, account_choices=account_choices)
+
             existing = Person.query.filter(
                 func.lower(Person.first_name) == first_name.lower(),
                 func.lower(Person.last_name) == last_name.lower(),
@@ -711,15 +790,16 @@ def register_routes(app):
             ).first()
             if existing:
                 flash("A member with that name already exists.", "error")
-                return render_template("member_form.html", person=person)
+                return render_template("member_form.html", person=person, account_choices=account_choices)
 
             person.first_name = first_name
             person.last_name = last_name
+            person.account_id = account.id if account else None
             db.session.commit()
             flash("Member updated.", "success")
             return redirect(url_for("list_members"))
 
-        return render_template("member_form.html", person=person)
+        return render_template("member_form.html", person=person, account_choices=account_choices)
 
 
 app = create_app()

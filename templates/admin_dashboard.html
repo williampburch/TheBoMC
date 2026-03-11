@@ -5,24 +5,24 @@
 {% block content %}
 <main class="single-column admin-portal-page">
   <section class="panel spotlight-panel admin-hero">
-    <div class="section-heading compact">
+    <div class="section-heading">
       <div>
         <p class="eyebrow">Admin portal</p>
-        <h2>Data entry stays here</h2>
+        <h1>Run the club from here.</h1>
       </div>
-      <p>Only admins can enter or edit visits, restaurants, weigh-ins, members, and privileged accounts.</p>
+      <p>Only admins can update the ledger, manage the roster, connect member accounts, and keep privileged access under control.</p>
     </div>
     <div class="overview-grid admin-action-grid">
       <article class="overview-card">
         <p class="eyebrow">Visits</p>
         <h3>Log a trip</h3>
-        <p>Create or update buffet visits and record the weigh-ins for the people who attended.</p>
+        <p>Create or update buffet visits and record the weigh-ins for the people who actually attended.</p>
         <a href="{{ url_for('create_visit') }}" class="text-link">Open visit entry</a>
       </article>
       <article class="overview-card">
         <p class="eyebrow">Members</p>
-        <h3>{{ people|length }} tracked guests</h3>
-        <p>Manage the guest roster used in weigh-in entry.</p>
+        <h3>{{ people_count }} tracked members</h3>
+        <p>Manage the roster and link member records to login accounts so admin sorting is meaningful.</p>
         <a href="{{ url_for('list_members') }}" class="text-link">Manage members</a>
       </article>
       <article class="overview-card">
@@ -31,6 +31,12 @@
         <p>Manage usernames, reset passwords, and grant or remove admin rights from one place.</p>
         <a href="{{ url_for('list_users') }}" class="text-link">Manage accounts</a>
       </article>
+      <article class="overview-card">
+        <p class="eyebrow">Map plan</p>
+        <h3>Prepare the atlas</h3>
+        <p>The public map page is staged. The next real step is storing buffet location data for pins and gold visit markers.</p>
+        <a href="{{ url_for('map_lab') }}" class="text-link">Open map lab</a>
+      </article>
     </div>
   </section>
 
@@ -38,28 +44,70 @@
     <section class="panel">
       <div class="section-heading compact">
         <div>
-          <p class="eyebrow">Recent trips</p>
-          <h2>Latest entries</h2>
+          <p class="eyebrow">Roster order</p>
+          <h2>Members sorted the right way</h2>
         </div>
+        <a href="{{ url_for('list_members') }}" class="text-link">Full roster editor</a>
       </div>
-      <div class="visit-feed compact-feed">
-        {% for visit in visits %}
-        <article class="catalog-card">
-          <p class="eyebrow">{{ visit.label }}</p>
-          <h3>{{ visit.restaurant }}</h3>
-          <p>{{ visit.weights|length }} weigh-ins logged</p>
-          <a href="{{ url_for('edit_visit', visit_id=visit.id) }}" class="text-link">Edit trip</a>
+      <p class="section-copy">Admin-linked members first, then most weigh-ins, then alphabetical order.</p>
+      <div class="roster-list">
+        {% for row in member_roster %}
+        <article class="roster-row">
+          <div class="roster-primary">
+            <div class="member-badge">{{ loop.index }}</div>
+            <div>
+              <h3>{{ row.person.full_name }}</h3>
+              <p>
+                {% if row.account %}
+                Linked account: {{ row.account.username }}
+                {% else %}
+                No linked login account yet
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          <div class="roster-meta">
+            <span class="status-pill{% if row.is_admin %} status-pill-admin{% endif %}">
+              {{ "Admin" if row.is_admin else "Member" }}
+            </span>
+            <span class="metric-pill">{{ row.weigh_in_count }} weigh-ins</span>
+            <a href="{{ url_for('edit_member', person_id=row.person.id) }}" class="text-link">Edit</a>
+          </div>
         </article>
         {% else %}
         <article class="catalog-card">
-          <h3>No visits yet</h3>
-          <p>Trips show up here once the ledger starts moving.</p>
+          <h3>No members yet</h3>
+          <p>Add the first roster entry before logging buffet visits.</p>
         </article>
         {% endfor %}
       </div>
     </section>
 
     <aside class="side-stack">
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Recent trips</p>
+            <h2>Latest entries</h2>
+          </div>
+        </div>
+        <div class="visit-feed compact-feed">
+          {% for visit in visits %}
+          <article class="catalog-card">
+            <p class="eyebrow">{{ visit.label }}</p>
+            <h3>{{ visit.restaurant }}</h3>
+            <p>{{ visit.weights|length }} weigh-ins logged</p>
+            <a href="{{ url_for('edit_visit', visit_id=visit.id) }}" class="text-link">Edit trip</a>
+          </article>
+          {% else %}
+          <article class="catalog-card">
+            <h3>No visits yet</h3>
+            <p>Trips show up here once the ledger starts moving.</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
       <section class="panel compact-panel">
         <div class="section-heading compact">
           <div>
@@ -78,6 +126,13 @@
               </span>
             </div>
             <p>Created {{ user_account.created_at.strftime("%B %d, %Y") }}</p>
+            <p>
+              {% if user_account.member_profile %}
+              Linked member: {{ user_account.member_profile.full_name }}
+              {% else %}
+              Not linked to a roster member yet.
+              {% endif %}
+            </p>
             <a href="{{ url_for('edit_user', user_id=user_account.id) }}" class="text-link">Edit account</a>
           </article>
           {% endfor %}

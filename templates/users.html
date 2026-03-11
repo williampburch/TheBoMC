@@ -22,6 +22,13 @@
           </span>
         </div>
         <p>Created {{ user_account.created_at.strftime("%B %d, %Y") }}</p>
+        <p>
+          {% if user_account.member_profile %}
+          Linked member: {{ user_account.member_profile.full_name }}.
+          {% else %}
+          Not linked to a roster member yet.
+          {% endif %}
+        </p>
         <p>Password resets and admin-role changes happen from the edit screen.</p>
         <a href="{{ url_for('edit_user', user_id=user_account.id) }}" class="text-link">Edit account</a>
       </article>

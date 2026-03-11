@@ -1,153 +1,199 @@
 {% extends "base.html" %}
 
-{% block title %}Splash | Buffet of the Month Club{% endblock %}
+{% block title %}Home | Buffet of the Month Club{% endblock %}
 
 {% block content %}
-<main class="single-column splash-page">
+<main class="single-column home-page">
   <section class="hero splash-hero">
-    <div class="hero-copy">
-      <p class="eyebrow">Public splash page</p>
-      <h1>The club ledger now has a front door.</h1>
+    <div class="panel spotlight-panel splash-popout">
+      <p class="eyebrow">Front desk</p>
+      <h1>The Buffet of the Month Club</h1>
       <p class="hero-text">
-        This page stays intentionally light. The charts, trip archive, guest rankings, and founder roster now sit behind a member account so the site feels simpler and more deliberate.
+        The largest buffet club we are aware of. We pick buffets with intent, show up hungry, record the damage, and keep the
+        ledger like it actually matters.
       </p>
-      <div class="hero-actions">
+      <div class="portal-grid">
         {% if current_user.is_authenticated %}
-        <a class="button button-primary" href="{{ url_for('dashboard') }}">Open dashboard</a>
-        <a class="button button-secondary" href="{{ url_for('visits_archive') }}">See trips</a>
+        <a class="portal-card portal-card-primary" href="{{ url_for('dashboard') }}">
+          <p class="eyebrow">Private access</p>
+          <h3>Open dashboard</h3>
+          <p>See the members-only stats, comment thread, and private club tools.</p>
+        </a>
+        <a class="portal-card" href="{{ url_for('visits_archive') }}">
+          <p class="eyebrow">Records</p>
+          <h3>Browse the archive</h3>
+          <p>Review the buffet history, restaurant rollup, and verified weigh-ins.</p>
+        </a>
+        <a class="portal-card" href="{{ url_for('club_overview') }}">
+          <p class="eyebrow">Public pages</p>
+          <h3>Browse as a guest</h3>
+          <p>Step back into the public-facing club pages and see the story the way a visitor does.</p>
+        </a>
         {% else %}
-        <a class="button button-primary" href="{{ url_for('register') }}">Create account</a>
-        <a class="button button-secondary" href="{{ url_for('login') }}">Sign in</a>
-        <a class="text-link" href="#guest-mode">Browse as guest</a>
+        <a class="portal-card portal-card-primary" href="{{ url_for('login') }}">
+          <p class="eyebrow">Member access</p>
+          <h3>Sign in</h3>
+          <p>Open the private dashboard, field notes, and club discussion.</p>
+        </a>
+        <a class="portal-card" href="{{ url_for('register') }}">
+          <p class="eyebrow">New account</p>
+          <h3>Register</h3>
+          <p>Create a member login so you can move from public viewing to full access.</p>
+        </a>
+        <a class="portal-card" href="{{ url_for('club_overview') }}">
+          <p class="eyebrow">Read-only</p>
+          <h3>Browse as guest</h3>
+          <p>Explore the club, archive, leaderboard, founders, and map plan without signing in.</p>
+        </a>
         {% endif %}
       </div>
+      <div class="hero-actions">
+        <a class="text-link" href="{{ url_for('visits_archive') }}">Visit archive</a>
+        <a class="text-link" href="{{ url_for('guests') }}">Leaderboard</a>
+        <a class="text-link" href="{{ url_for('map_lab') }}">Map lab</a>
+      </div>
     </div>
-    <aside class="panel hero-rail">
+
+    <aside class="panel splash-sidecar">
       <div class="section-heading compact">
         <div>
-          <p class="eyebrow">At a glance</p>
-          <h2>Public preview</h2>
+          <p class="eyebrow">Live ledger</p>
+          <h2>Club snapshot</h2>
         </div>
       </div>
       <ul class="stat-grid">
         <li>
           <p class="eyebrow">Trips</p>
           <span>{{ visit_count }}</span>
-          <p>Visits on record</p>
+          <p>Official buffet missions</p>
         </li>
         <li>
-          <p class="eyebrow">Guests</p>
+          <p class="eyebrow">Members</p>
           <span>{{ people_count }}</span>
-          <p>Tracked members</p>
+          <p>People in the record</p>
         </li>
         <li>
           <p class="eyebrow">Restaurants</p>
           <span>{{ restaurant_count }}</span>
-          <p>Unique stops</p>
+          <p>Stops on the board</p>
         </li>
         <li>
           <p class="eyebrow">Total gain</p>
           <span>{{ "%.1f"|format(total_gain) }}</span>
-          <p>Pounds logged</p>
+          <p>Pounds documented</p>
         </li>
       </ul>
+      <article class="catalog-card splash-note">
+        <p class="eyebrow">Latest trip</p>
+        <h3>{{ latest_visit.restaurant if latest_visit else "No visit logged yet" }}</h3>
+        <p>
+          {% if latest_visit %}
+          {{ latest_visit.label }} produced {{ "%.1f"|format(latest_visit.total_gain) }} pounds of recorded gain.
+          {% else %}
+          The ledger is waiting on the next buffet run.
+          {% endif %}
+        </p>
+      </article>
     </aside>
   </section>
 
-  <section class="overview-grid splash-preview-grid" id="guest-mode">
-    <article class="overview-card panel preview-card">
-      <p class="eyebrow">Guest mode</p>
-      <h3>See what the club is about</h3>
-      <p>Guest browsing stays public and informational. It explains the club, the monthly buffet ritual, and the kind of data members track.</p>
+  <section class="overview-grid">
+    <article class="overview-card">
+      <p class="eyebrow">Discipline</p>
+      <h3>Monthly buffet program</h3>
+      <p>The club operates on a steady cadence: pick a buffet, show up, log the visit, keep the archive moving.</p>
     </article>
-    <article class="overview-card panel preview-card">
-      <p class="eyebrow">Member access</p>
-      <h3>Private stats and history</h3>
-      <p>Signing in unlocks the dashboard, archive, founder roster, guest leaderboard, and the comment thread.</p>
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('dashboard') }}" class="text-link">Open dashboard</a>
-      {% else %}
-      <a href="{{ url_for('login') }}" class="text-link">Sign in for the full site</a>
-      {% endif %}
+    <article class="overview-card">
+      <p class="eyebrow">Honesty</p>
+      <h3>Before and after weigh-ins</h3>
+      <p>The site tracks the cost of participation instead of pretending the food left no trace.</p>
     </article>
-    <article class="overview-card panel preview-card">
-      <p class="eyebrow">Admin access</p>
-      <h3>Data entry and account control</h3>
-      <p>Admins log buffet visits, edit weigh-ins, reset passwords, and grant admin rights from the portal.</p>
-      {% if current_user.is_authenticated and current_user.is_admin %}
-      <a href="{{ url_for('admin_dashboard') }}" class="text-link">Open admin portal</a>
-      {% endif %}
+    <article class="overview-card">
+      <p class="eyebrow">Oversight</p>
+      <h3>{{ founder_count }} founder-led accounts</h3>
+      <p>Admins keep the roster, visits, and privileged controls in working order.</p>
+    </article>
+    <article class="overview-card">
+      <p class="eyebrow">Next build</p>
+      <h3>Geomap and buffet pins</h3>
+      <p>We already know the color system: gold for visited buffets, green for targets still on deck.</p>
     </article>
   </section>
 
-  <section class="panel spotlight-panel" id="club-story">
-    <div class="section-heading compact">
-      <div>
-        <p class="eyebrow">About the club</p>
-        <h2>What The Buffet of the Month Club actually does</h2>
+  <section class="dashboard-grid">
+    <section class="panel">
+      <div class="section-heading compact">
+        <div>
+          <p class="eyebrow">What this site is for</p>
+          <h2>A serious record for a very specific club</h2>
+        </div>
+        <a href="{{ url_for('club_overview') }}" class="text-link">Read the club page</a>
       </div>
-    </div>
-    <div class="catalog-grid">
-      <article class="catalog-card">
-        <p class="eyebrow">Monthly ritual</p>
-        <h3>One buffet, one log entry</h3>
-        <p>The club picks a buffet, shows up hungry, and records the visit as a single monthly event in the ledger.</p>
-      </article>
-      <article class="catalog-card">
-        <p class="eyebrow">Weigh-ins</p>
-        <h3>Before and after</h3>
-        <p>Members who attend can log a pre-buffet and post-buffet weight so the club can track the damage honestly.</p>
-      </article>
-      <article class="catalog-card">
-        <p class="eyebrow">Club history</p>
-        <h3>Archive and commentary</h3>
-        <p>Signed-in members can browse the trip archive, review the leaderboards, and add to the running club comment thread.</p>
-      </article>
-      <article class="catalog-card">
-        <p class="eyebrow">Admin role</p>
-        <h3>Keep the ledger clean</h3>
-        <p>Admins manage visits, maintain member accounts, reset passwords when needed, and grant admin access to the right people.</p>
-      </article>
-    </div>
-  </section>
+      <div class="timeline-list">
+        <article class="timeline-card">
+          <p class="eyebrow">Track the trip</p>
+          <h3>One buffet, one entry</h3>
+          <p>Every outing becomes a clean record with month, year, location, attendance, and total impact.</p>
+        </article>
+        <article class="timeline-card">
+          <p class="eyebrow">Rank the damage</p>
+          <h3>Leaderboards stay public</h3>
+          <p>The club has no reason to hide the biggest gainers or the most productive buffet stops.</p>
+        </article>
+        <article class="timeline-card">
+          <p class="eyebrow">Preserve the culture</p>
+          <h3>Comments and founders remain visible</h3>
+          <p>The site keeps the club voice along with the statistics so the archive feels lived-in.</p>
+        </article>
+      </div>
+    </section>
 
-  <section class="panel spotlight-panel">
-    <div class="section-heading compact">
-      <div>
-        <p class="eyebrow">Current snapshot</p>
-        <h2>{{ latest_visit.restaurant if latest_visit else "Waiting on the next buffet run" }}</h2>
-      </div>
-      {% if current_user.is_authenticated and current_user.is_admin %}
-      <a href="{{ url_for('admin_dashboard') }}" class="button button-secondary compact-button">Admin portal</a>
-      {% endif %}
-    </div>
-    <div class="dashboard-grid">
-      <article class="catalog-card">
-        <p class="eyebrow">Latest trip</p>
-        {% if latest_visit %}
-        <h3>{{ latest_visit.label }}</h3>
-        <p>{{ latest_visit.restaurant }} produced {{ "%.1f"|format(latest_visit.total_gain) }} pounds of total gain.</p>
+    <aside class="side-stack">
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Current leader</p>
+            <h2>Career gain</h2>
+          </div>
+          <a href="{{ url_for('guests') }}" class="text-link">Full board</a>
+        </div>
+        {% if top_guest %}
+        <article class="score-row feature-score">
+          <div class="score-rank">1</div>
+          <div>
+            <h3>{{ top_guest.person.full_name }}</h3>
+            <p>{{ top_guest.visit_count }} logged visits</p>
+          </div>
+          <div class="score-value">{{ "%.1f"|format(top_guest.total_gain) }}</div>
+        </article>
         {% else %}
-        <h3>No visit yet</h3>
-        <p>An admin needs to log the first trip before this preview fills in.</p>
+        <article class="empty-state compact-empty">
+          <h3>No leaderboard yet</h3>
+          <p>The first weigh-ins will create the table.</p>
+        </article>
         {% endif %}
-      </article>
-      <article class="catalog-card">
-        <p class="eyebrow">Career leader</p>
-      {% if top_guest %}
-      <h3>{{ top_guest.person.full_name }}</h3>
-      <p>{{ "%.1f"|format(top_guest.total_gain) }} pounds gained across {{ top_guest.visit_count }} recorded visits.</p>
-      {% else %}
-      <h3>No leaderboard yet</h3>
-      <p>Career totals appear here once weigh-ins are available.</p>
-      {% endif %}
-      </article>
-      <article class="catalog-card">
-        <p class="eyebrow">Founders</p>
-        <h3>{{ founders|length }}</h3>
-        <p>Admins can manage users, members, weigh-ins, and visit entry from the private portal.</p>
-      </article>
-    </div>
+      </section>
+
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Map program</p>
+            <h2>Buffet atlas</h2>
+          </div>
+          <a href="{{ url_for('map_lab') }}" class="text-link">Open map lab</a>
+        </div>
+        <div class="mini-stack">
+          <article class="catalog-card">
+            <h3>Visited stops should be gold</h3>
+            <p>The club needs a visual distinction between verified trips and future candidates.</p>
+          </article>
+          <article class="catalog-card">
+            <h3>We already have the archive</h3>
+            <p>The next step is adding location data so the ledger can power a real geographic view.</p>
+          </article>
+        </div>
+      </section>
+    </aside>
   </section>
 </main>
 {% endblock %}

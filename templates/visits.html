@@ -5,12 +5,27 @@
 {% block content %}
 <main class="single-column archive-page">
   <section class="panel spotlight-panel">
-    <div class="section-heading compact">
+    <div class="section-heading">
       <div>
         <p class="eyebrow">Trip archive</p>
-        <h2>Every buffet visit</h2>
+        <h1>Every verified buffet visit.</h1>
       </div>
-      <p>The full visit feed lives here, while the splash page stays intentionally spare.</p>
+      <p>Guest readable, member useful, admin editable. This is the permanent record of where the club went and what happened.</p>
+    </div>
+    <div class="overview-grid archive-stats">
+      {% for row in scoreboard[:4] %}
+      <article class="overview-card">
+        <p class="eyebrow">Top trip {{ loop.index }}</p>
+        <h3>{{ row.visit.restaurant }}</h3>
+        <p>{{ row.visit.label }} · {{ "%.1f"|format(row.total_gain) }} pounds gained</p>
+      </article>
+      {% else %}
+      <article class="overview-card">
+        <p class="eyebrow">Archive</p>
+        <h3>Waiting on the first trip</h3>
+        <p>Once a visit is logged, the ranking board starts here.</p>
+      </article>
+      {% endfor %}
     </div>
     <div class="visit-feed">
       {% for visit in visits %}
