@@ -31,13 +31,19 @@
           <div class="nav-drawer-panel">
             <div class="nav-cluster">
               <nav class="site-nav">
+                {% if current_user.is_authenticated %}
                 <a class="{% if request.endpoint == 'home' %}is-active{% endif %}" href="{{ url_for('home') }}">Splash</a>
                 <a class="{% if request.endpoint == 'dashboard' %}is-active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
                 <a class="{% if request.endpoint == 'visits_archive' %}is-active{% endif %}" href="{{ url_for('visits_archive') }}">Trips</a>
                 <a class="{% if request.endpoint == 'guests' %}is-active{% endif %}" href="{{ url_for('guests') }}">Guests</a>
                 <a class="{% if request.endpoint == 'founders' %}is-active{% endif %}" href="{{ url_for('founders') }}">Founders</a>
                 {% if current_user.is_authenticated and current_user.is_admin %}
-                <a class="{% if request.endpoint in ['admin_dashboard', 'create_visit', 'edit_visit', 'create_user', 'list_members', 'create_member', 'edit_member'] %}is-active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>
+                <a class="{% if request.endpoint in ['admin_dashboard', 'create_visit', 'edit_visit', 'create_user', 'list_users', 'edit_user', 'list_members', 'create_member', 'edit_member'] %}is-active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>
+                {% endif %}
+                {% else %}
+                <a class="{% if request.endpoint == 'home' %}is-active{% endif %}" href="{{ url_for('home') }}">Splash</a>
+                <a href="{{ url_for('home') }}#guest-mode">Browse as guest</a>
+                <a href="{{ url_for('home') }}#club-story">What we do</a>
                 {% endif %}
               </nav>
               <div class="nav-actions">

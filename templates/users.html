@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts | Buffet of the Month Club{% endblock %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Account admin</p>
+        <h2>User management</h2>
+      </div>
+      <a href="{{ url_for('create_user') }}" class="button button-primary compact-button">Create account</a>
+    </div>
+    <div class="catalog-grid">
+      {% for user_account in users %}
+      <article class="catalog-card">
+        <div class="meta-row">
+          <h3>{{ user_account.username }}</h3>
+          <span class="status-pill{% if user_account.is_admin %} status-pill-admin{% endif %}">
+            {{ "Admin" if user_account.is_admin else "Member" }}
+          </span>
+        </div>
+        <p>Created {{ user_account.created_at.strftime("%B %d, %Y") }}</p>
+        <p>Password resets and admin-role changes happen from the edit screen.</p>
+        <a href="{{ url_for('edit_user', user_id=user_account.id) }}" class="text-link">Edit account</a>
+      </article>
+      {% else %}
+      <article class="catalog-card">
+        <h3>No users yet</h3>
+        <p>Create the first account from here.</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

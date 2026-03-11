@@ -91,6 +91,12 @@ Set at least these values in `.env`:
 - `ADMIN_USERNAME`
 - `ADMIN_PASSWORD`
 
+Optional recovery flag:
+
+- `ADMIN_RESET_PASSWORD_ON_START=1`
+
+That flag is only needed if the admin user already exists and you want startup to reset that user's password to the current `ADMIN_PASSWORD`.
+
 For local development, the default SQLite connection is already set:
 
 ```env
@@ -111,6 +117,18 @@ For a fresh local database:
 
 ```powershell
 flask --app app:app db upgrade
+```
+
+If you need to create or repair the env-backed admin account without touching any other data:
+
+```powershell
+python scripts/ensure_admin.py
+```
+
+If the admin user already exists and you need to force the password in `.env` onto that account:
+
+```powershell
+python scripts/ensure_admin.py --reset-password
 ```
 
 ### 6. Import the legacy MySQL dump

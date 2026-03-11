@@ -28,8 +28,8 @@
       <article class="overview-card">
         <p class="eyebrow">Accounts</p>
         <h3>{{ user_count }} user accounts</h3>
-        <p>Create standard users or additional admins when needed.</p>
-        <a href="{{ url_for('create_user') }}" class="text-link">Create account</a>
+        <p>Manage usernames, reset passwords, and grant or remove admin rights from one place.</p>
+        <a href="{{ url_for('list_users') }}" class="text-link">Manage accounts</a>
       </article>
     </div>
   </section>
@@ -60,6 +60,30 @@
     </section>
 
     <aside class="side-stack">
+      <section class="panel compact-panel">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">Accounts</p>
+            <h2>User management</h2>
+          </div>
+          <a href="{{ url_for('list_users') }}" class="text-link">View all accounts</a>
+        </div>
+        <div class="visit-feed compact-feed">
+          {% for user_account in users %}
+          <article class="catalog-card">
+            <div class="meta-row">
+              <h3>{{ user_account.username }}</h3>
+              <span class="status-pill{% if user_account.is_admin %} status-pill-admin{% endif %}">
+                {{ "Admin" if user_account.is_admin else "Member" }}
+              </span>
+            </div>
+            <p>Created {{ user_account.created_at.strftime("%B %d, %Y") }}</p>
+            <a href="{{ url_for('edit_user', user_id=user_account.id) }}" class="text-link">Edit account</a>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
       <section class="panel compact-panel">
         <div class="section-heading compact">
           <div>

@@ -191,6 +191,7 @@ def seed_admin_from_env():
 
     admin_username = (os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_EMAIL") or "").strip().lower()
     admin_password = os.getenv("ADMIN_PASSWORD")
+    reset_password = os.getenv("ADMIN_RESET_PASSWORD_ON_START") == "1"
 
     if not admin_username or not admin_password:
         return
@@ -205,8 +206,14 @@ def seed_admin_from_env():
         return
 
     if existing_user:
+        should_commit = False
         if not existing_user.is_admin:
             existing_user.is_admin = True
+            should_commit = True
+        if reset_password:
+            existing_user.set_password(admin_password)
+            should_commit = True
+        if should_commit:
             db.session.commit()
         return
 
@@ -247,6 +254,10 @@ def get_redirect_target(default_endpoint="dashboard"):
 
 def get_people():
     return Person.query.order_by(func.lower(Person.last_name), func.lower(Person.first_name)).all()
+
+
+def get_users():
+    return User.query.order_by(func.lower(User.username)).all()
 
 
 def get_weight_map(visit):
@@ -420,13 +431,15 @@ def register_routes(app):
     def admin_dashboard():
         visits = sort_visits(Visit.query.all())
         people = get_people()
+        users = get_users()
         recent_comments = Comment.query.order_by(Comment.created_at.desc()).limit(8).all()
         return render_template(
             "admin_dashboard.html",
             visits=visits[:8],
             people=people,
+            users=users[:6],
             recent_comments=recent_comments,
-            user_count=User.query.count(),
+            user_count=len(users),
         )
 
     @app.route("/login", methods=["GET", "POST"])
@@ -583,20 +596,69 @@ def register_routes(app):
             password = request.form.get("password", "")
             if not username or not password:
                 flash("Username and password are required.", "error")
-                return render_template("user_form.html")
+                return render_template("user_form.html", user_account=None)
+
+            if len(password) < 8:
+                flash("Passwords must be at least 8 characters.", "error")
+                return render_template("user_form.html", user_account=None)
 
             if User.query.filter(func.lower(User.username) == username).first():
                 flash("A user with that username already exists.", "error")
-                return render_template("user_form.html")
+                return render_template("user_form.html", user_account=None)
 
             user = User(username=username, is_admin=request.form.get("is_admin") == "on")
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             flash("User created.", "success")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("list_users"))
 
-        return render_template("user_form.html")
+        return render_template("user_form.html", user_account=None)
+
+    @app.route("/admin/users")
+    @admin_required
+    def list_users():
+        return render_template("users.html", users=get_users())
+
+    @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def edit_user(user_id):
+        user_account = User.query.get_or_404(user_id)
+
+        if request.method == "POST":
+            username = request.form.get("username", "").strip().lower()
+            password = request.form.get("password", "")
+            is_admin = request.form.get("is_admin") == "on"
+
+            if not username:
+                flash("Username is required.", "error")
+                return render_template("user_form.html", user_account=user_account)
+
+            existing_user = User.query.filter(
+                func.lower(User.username) == username,
+                User.id != user_account.id,
+            ).first()
+            if existing_user:
+                flash("A user with that username already exists.", "error")
+                return render_template("user_form.html", user_account=user_account)
+
+            if user_account.is_admin and not is_admin and User.query.filter_by(is_admin=True).count() == 1:
+                flash("At least one admin account must remain.", "error")
+                return render_template("user_form.html", user_account=user_account)
+
+            user_account.username = username
+            user_account.is_admin = is_admin
+            if password:
+                if len(password) < 8:
+                    flash("Passwords must be at least 8 characters.", "error")
+                    return render_template("user_form.html", user_account=user_account)
+                user_account.set_password(password)
+
+            db.session.commit()
+            flash("User updated.", "success")
+            return redirect(url_for("list_users"))
+
+        return render_template("user_form.html", user_account=user_account)
 
     @app.route("/admin/members")
     @admin_required

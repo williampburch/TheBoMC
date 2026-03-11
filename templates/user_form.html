@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Create Account | Buffet of the Month Club{% endblock %}
+{% block title %}{{ "Edit Account" if user_account else "Create Account" }} | Buffet of the Month Club{% endblock %}
 
 {% block content %}
 <main class="single-column">
@@ -8,24 +8,37 @@
     <div class="section-heading compact">
       <div>
         <p class="eyebrow">Account admin</p>
-        <h2>Create another account</h2>
+        <h2>{{ "Edit account" if user_account else "Create another account" }}</h2>
       </div>
-      <p>Use this for members who need login access. Only enable administrator for people who should manage club data.</p>
+      <p>
+        {% if user_account %}
+        Update usernames, reset passwords, and manage admin rights here. Leave the password blank to keep the current password.
+        {% else %}
+        Use this for members who need login access. Only enable administrator for people who should manage club data.
+        {% endif %}
+      </p>
     </div>
     <form method="post" class="form-grid">
       <label>
         <span>Username</span>
-        <input type="text" name="username" required />
+        <input type="text" name="username" value="{{ request.form.get('username', user_account.username if user_account else '') }}" required />
       </label>
       <label>
-        <span>Password</span>
-        <input type="password" name="password" required />
+        <span>{{ "New password" if user_account else "Password" }}</span>
+        <input type="password" name="password" {% if not user_account %}required{% endif %} />
       </label>
       <label class="checkbox-row">
-        <input type="checkbox" name="is_admin" />
+        <input
+          type="checkbox"
+          name="is_admin"
+          {% if request.form.get('is_admin') == 'on' or (request.method != 'POST' and user_account and user_account.is_admin) %}checked{% endif %}
+        />
         <span>Administrator</span>
       </label>
-      <button type="submit" class="button button-primary">Create account</button>
+      <div class="hero-actions">
+        <button type="submit" class="button button-primary">{{ "Save account" if user_account else "Create account" }}</button>
+        <a href="{{ url_for('list_users') }}" class="button button-secondary">Back to accounts</a>
+      </div>
     </form>
   </section>
 </main>
