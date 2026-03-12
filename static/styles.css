@@ -926,6 +926,66 @@ button {
   border-color: rgba(14, 140, 125, 0.34);
 }
 
+.form-supporting-copy {
+  margin: -6px 0 0;
+  color: var(--ink-soft);
+}
+
+.buffet-map {
+  min-height: 480px;
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.map-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-pin-shell {
+  background: transparent;
+  border: 0;
+}
+
+.map-pin {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 250, 240, 0.95);
+  box-shadow: 0 10px 22px rgba(18, 30, 28, 0.28);
+}
+
+.map-pin-visited {
+  background: #d7a93f;
+}
+
+.map-pin-target {
+  background: #0e8c7d;
+}
+
+.map-pin-neutral {
+  background: #67757b;
+}
+
+.status-pill-visited {
+  background: rgba(215, 169, 63, 0.16);
+  color: #8a6212;
+}
+
+.status-pill-target {
+  background: rgba(14, 140, 125, 0.15);
+  color: #0f665c;
+}
+
+.status-pill-closed {
+  background: rgba(103, 117, 123, 0.14);
+  color: #465258;
+}
+
 .auth-helper {
   margin: 18px 0 0;
 }

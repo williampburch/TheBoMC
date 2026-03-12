@@ -15,6 +15,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    {% block extra_head %}{% endblock %}
   </head>
   <body>
     <div class="page-shell">
@@ -44,7 +45,7 @@
                 <a class="{% if request.endpoint == 'dashboard' %}is-active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
                 {% endif %}
                 {% if current_user.is_authenticated and current_user.is_admin %}
-                <a class="{% if request.endpoint in ['admin_dashboard', 'create_visit', 'edit_visit', 'create_user', 'list_users', 'edit_user', 'list_members', 'create_member', 'edit_member'] %}is-active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>
+                <a class="{% if request.endpoint in ['admin_dashboard', 'create_visit', 'edit_visit', 'create_user', 'list_users', 'edit_user', 'list_members', 'create_member', 'edit_member', 'list_restaurants', 'create_restaurant', 'edit_restaurant'] %}is-active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>
                 {% endif %}
               </nav>
               <div class="nav-actions">
@@ -78,5 +79,6 @@
 
       {% block content %}{% endblock %}
     </div>
+    {% block extra_scripts %}{% endblock %}
   </body>
 </html>

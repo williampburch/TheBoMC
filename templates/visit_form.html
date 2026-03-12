@@ -10,7 +10,7 @@
         <p class="eyebrow">Admin workflow</p>
         <h2>{{ "Edit buffet visit" if visit else "Log a new buffet visit" }}</h2>
       </div>
-      <p>The legacy format is simple: restaurant name, month, year, and the weigh-ins for people who were there.</p>
+      <p>The trip still uses the legacy month and year format, but restaurant selection now comes from the atlas so map pins stay clean.</p>
     </div>
     <form method="post" class="form-grid">
       <div class="grid-two">
@@ -39,8 +39,17 @@
 
       <label>
         <span>Restaurant</span>
-        <input type="text" name="restaurant" value="{{ request.form.get('restaurant', visit.restaurant if visit else '') }}" required />
+        {% set selected_restaurant_id = request.form.get('restaurant_id', visit.restaurant_id if visit else '') %}
+        <select name="restaurant_id" required>
+          <option value="">Select a restaurant</option>
+          {% for restaurant in restaurants %}
+          <option value="{{ restaurant.id }}" {% if selected_restaurant_id|string == restaurant.id|string %}selected{% endif %}>
+            {{ restaurant.name }}{% if restaurant.city or restaurant.state %} · {{ [restaurant.city, restaurant.state]|select|join(', ') }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
       </label>
+      <p class="form-supporting-copy">Need a new stop first? <a href="{{ url_for('create_restaurant') }}" class="text-link">Add it to the restaurant atlas</a>.</p>
 
       <section class="weigh-in-editor panel inset-panel">
         <div class="section-heading compact">

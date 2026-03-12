@@ -2,71 +2,86 @@
 
 {% block title %}Map Lab | Buffet of the Month Club{% endblock %}
 
+{% block extra_head %}
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+{% endblock %}
+
 {% block content %}
 <main class="single-column map-page">
   <section class="panel spotlight-panel feature-hero">
     <div class="section-heading">
       <div>
         <p class="eyebrow">Map lab</p>
-        <h1>The next version should put buffet history on a real geomap.</h1>
+        <h1>The buffet atlas is live.</h1>
       </div>
-      <p>
-        The current ledger tracks restaurant names well. The next upgrade should add geography so the club can see where it has
-        been, what is still on deck, and which buffets have earned gold status.
-      </p>
+      <p>The map now reads from the restaurant atlas, so repeated trips reuse one location record and every pin can show real visit history.</p>
     </div>
+  </section>
+
+  <section class="overview-grid stat-grid">
+    <article class="overview-card">
+      <p class="eyebrow">Restaurants</p>
+      <h3>{{ restaurant_count }}</h3>
+      <p>Total buffet stops in the atlas.</p>
+    </article>
+    <article class="overview-card">
+      <p class="eyebrow">Pinned</p>
+      <h3>{{ mapped_restaurant_count }}</h3>
+      <p>Restaurants with coordinates ready for the map.</p>
+    </article>
+    <article class="overview-card">
+      <p class="eyebrow">Targets</p>
+      <h3>{{ target_restaurant_count }}</h3>
+      <p>Future buffet candidates still on deck.</p>
+    </article>
   </section>
 
   <section class="dashboard-grid">
     <section class="panel atlas-panel">
       <div class="section-heading compact">
         <div>
-          <p class="eyebrow">System preview</p>
-          <h2>Visited buffets should read as gold</h2>
+          <p class="eyebrow">Live map</p>
+          <h2>Visited buffets read as gold</h2>
         </div>
       </div>
-      <div class="atlas-stage">
-        <div class="atlas-orbit orbit-a"></div>
-        <div class="atlas-orbit orbit-b"></div>
-        <div class="atlas-core">
-          <span class="atlas-dot atlas-dot-visited"></span>
-          <span>Verified club visit</span>
-        </div>
-        <div class="atlas-core">
-          <span class="atlas-dot atlas-dot-candidate"></span>
-          <span>Future buffet target</span>
-        </div>
-        <div class="atlas-core">
-          <span class="atlas-dot atlas-dot-neutral"></span>
-          <span>Unclassified location</span>
-        </div>
-      </div>
-      <p class="panel-note">
-        We need coordinates, status flags, and probably a notes field per restaurant before this becomes a true map instead of a
-        concept board.
-      </p>
+      <div id="buffet-map" class="buffet-map" data-markers='{{ map_markers|tojson }}'></div>
+      <p class="panel-note">Pins render only for restaurants with coordinates. Add the missing coordinates from the admin restaurant atlas.</p>
     </section>
 
     <aside class="side-stack">
       <section class="panel compact-panel">
         <div class="section-heading compact">
           <div>
-            <p class="eyebrow">Why it matters</p>
-            <h2>What the map should do</h2>
+            <p class="eyebrow">Legend</p>
+            <h2>Pin meaning</h2>
           </div>
         </div>
         <div class="mini-stack">
           <article class="catalog-card">
-            <h3>See regional coverage</h3>
-            <p>Make it obvious which buffet territory the club has already claimed.</p>
+            <div class="map-legend-row">
+              <span class="atlas-dot atlas-dot-visited"></span>
+              <strong>Visited</strong>
+            </div>
+            <p>At least one verified club trip is attached to the restaurant.</p>
           </article>
           <article class="catalog-card">
-            <h3>Track visited vs. target</h3>
-            <p>Gold for confirmed visits, club green for nominated stops still waiting for a trip.</p>
+            <div class="map-legend-row">
+              <span class="atlas-dot atlas-dot-candidate"></span>
+              <strong>Target</strong>
+            </div>
+            <p>The place is in the atlas and ready for future planning, but no trip is logged yet.</p>
           </article>
           <article class="catalog-card">
-            <h3>Support planning</h3>
-            <p>Future versions should let admins plan trips off the same map used for club history.</p>
+            <div class="map-legend-row">
+              <span class="atlas-dot atlas-dot-neutral"></span>
+              <strong>Closed or other</strong>
+            </div>
+            <p>Useful for retaining history without treating the location as an active target.</p>
           </article>
         </div>
       </section>
@@ -74,43 +89,88 @@
       <section class="panel compact-panel">
         <div class="section-heading compact">
           <div>
-            <p class="eyebrow">Current footprint</p>
-            <h2>{{ restaurant_count }} restaurants logged</h2>
+            <p class="eyebrow">Coverage</p>
+            <h2>Latest mapped stops</h2>
           </div>
         </div>
         <div class="mini-stack">
-          {% for restaurant in restaurant_rollup[:6] %}
+          {% for row in restaurant_roster if row.restaurant.has_coordinates %}
+          {% if loop.index <= 6 %}
           <article class="catalog-card">
-            <h3>{{ restaurant.name }}</h3>
-            <p>{{ restaurant.visit_count }} logged {{ "visit" if restaurant.visit_count == 1 else "visits" }}</p>
+            <p class="eyebrow">{{ row.restaurant.status|title }}</p>
+            <h3>{{ row.restaurant.name }}</h3>
+            <p>{{ row.restaurant.full_address or "Address not set" }}</p>
+            <p>{{ row.visit_count }} {{ "visit" if row.visit_count == 1 else "visits" }}</p>
           </article>
+          {% endif %}
           {% else %}
           <article class="catalog-card">
-            <h3>No footprint yet</h3>
-            <p>Once the first visit is logged, the map program has raw material to work with.</p>
+            <h3>No map pins yet</h3>
+            <p>Add coordinates to at least one restaurant to activate the map.</p>
           </article>
           {% endfor %}
         </div>
       </section>
     </aside>
   </section>
-
-  <section class="overview-grid roadmap-grid">
-    <article class="overview-card">
-      <p class="eyebrow">Phase 1</p>
-      <h3>Add location data</h3>
-      <p>Capture buffet address or coordinates on visit entry so the archive has something mappable.</p>
-    </article>
-    <article class="overview-card">
-      <p class="eyebrow">Phase 2</p>
-      <h3>Build a club atlas</h3>
-      <p>Show all buffets on one interactive map with filters for year, attendance, and total gain.</p>
-    </article>
-    <article class="overview-card">
-      <p class="eyebrow">Phase 3</p>
-      <h3>Highlight visited stops in gold</h3>
-      <p>Separate verified club visits from future candidates so the expansion path is easy to see.</p>
-    </article>
-  </section>
 </main>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const mapNode = document.getElementById("buffet-map");
+    const markers = JSON.parse(mapNode.dataset.markers || "[]");
+
+    const map = L.map(mapNode, {
+      scrollWheelZoom: false,
+      zoomControl: true,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    const markerTheme = {
+      visited: { className: "map-pin-visited" },
+      target: { className: "map-pin-target" },
+      closed: { className: "map-pin-neutral" },
+    };
+
+    const bounds = [];
+    markers.forEach((marker) => {
+      const theme = markerTheme[marker.status] || markerTheme.closed;
+      const icon = L.divIcon({
+        className: "map-pin-shell",
+        html: `<span class="map-pin ${theme.className}"></span>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+
+      const popupBits = [
+        `<strong>${marker.name}</strong>`,
+        marker.address ? `<div>${marker.address}</div>` : "",
+        `<div>${marker.visit_count} ${marker.visit_count === 1 ? "visit" : "visits"}</div>`,
+        marker.latest_visit ? `<div>Latest: ${marker.latest_visit}</div>` : "",
+        marker.notes ? `<div>${marker.notes}</div>` : "",
+      ].filter(Boolean);
+
+      L.marker([marker.latitude, marker.longitude], { icon })
+        .addTo(map)
+        .bindPopup(popupBits.join(""));
+
+      bounds.push([marker.latitude, marker.longitude]);
+    });
+
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [32, 32] });
+    } else {
+      map.setView([39.8283, -98.5795], 4);
+    }
+  </script>
 {% endblock %}

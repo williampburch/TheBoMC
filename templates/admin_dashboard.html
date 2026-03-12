@@ -32,10 +32,10 @@
         <a href="{{ url_for('list_users') }}" class="text-link">Manage accounts</a>
       </article>
       <article class="overview-card">
-        <p class="eyebrow">Map plan</p>
-        <h3>Prepare the atlas</h3>
-        <p>The public map page is staged. The next real step is storing buffet location data for pins and gold visit markers.</p>
-        <a href="{{ url_for('map_lab') }}" class="text-link">Open map lab</a>
+        <p class="eyebrow">Restaurants</p>
+        <h3>{{ restaurant_count }} mapped stops</h3>
+        <p>{{ mapped_restaurant_count }} currently have coordinates and are ready for map pins and popups.</p>
+        <a href="{{ url_for('list_restaurants') }}" class="text-link">Manage restaurants</a>
       </article>
     </div>
   </section>

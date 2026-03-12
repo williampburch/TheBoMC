@@ -20,6 +20,7 @@ load_dotenv()
 
 MONTH_CHOICES = [month_name[index] for index in range(1, 13)]
 MONTH_TO_NUMBER = {name: index for index, name in enumerate(MONTH_CHOICES, start=1)}
+RESTAURANT_STATUS_CHOICES = ["visited", "target", "closed"]
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -87,13 +88,48 @@ class Person(db.Model):
         return bool(self.account and self.account.is_admin)
 
 
+class Restaurant(db.Model):
+    __tablename__ = "restaurant"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    street_address = db.Column(db.String(255), nullable=True)
+    city = db.Column(db.String(120), nullable=True)
+    state = db.Column(db.String(40), nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="target")
+    notes = db.Column(db.String(500), nullable=True)
+    visits = db.relationship("Visit", back_populates="restaurant_ref")
+
+    @property
+    def full_address(self):
+        parts = [self.street_address, self.city, self.state]
+        return ", ".join(part.strip() for part in parts if part and part.strip())
+
+    @property
+    def latest_visit(self):
+        if not self.visits:
+            return None
+        return max(self.visits, key=lambda visit: (visit.year, visit.month_number, visit.id))
+
+    @property
+    def visit_count(self):
+        return len(self.visits)
+
+    @property
+    def has_coordinates(self):
+        return self.latitude is not None and self.longitude is not None
+
+
 class Visit(db.Model):
     __tablename__ = "visit"
 
     id = db.Column("visitid", db.Integer, primary_key=True)
     year = db.Column(db.Integer, nullable=False)
     month = db.Column(db.String(20), nullable=False)
-    restaurant = db.Column(db.String(255), nullable=False)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurant.id"), nullable=False)
+    restaurant_ref = db.relationship("Restaurant", back_populates="visits")
     weights = db.relationship(
         "WeighIn",
         back_populates="visit",
@@ -108,6 +144,10 @@ class Visit(db.Model):
     @property
     def label(self):
         return f"{self.month} {self.year}"
+
+    @property
+    def restaurant(self):
+        return self.restaurant_ref.name if self.restaurant_ref else "Unknown restaurant"
 
     @property
     def total_gain(self):
@@ -147,9 +187,20 @@ class VisitScoreRow:
 
 
 class RestaurantSummary:
-    def __init__(self, name, visit_count):
-        self.name = name
+    def __init__(self, restaurant, visit_count):
+        self.restaurant = restaurant
+        self.name = restaurant.name
         self.visit_count = visit_count
+
+
+class RestaurantRosterRow:
+    def __init__(self, restaurant):
+        self.restaurant = restaurant
+        self.visit_count = restaurant.visit_count
+        self.latest_visit = restaurant.latest_visit
+        self.coordinates_label = (
+            f"{restaurant.latitude:.4f}, {restaurant.longitude:.4f}" if restaurant.has_coordinates else "Coordinates missing"
+        )
 
 
 class PersonLeaderboardRow:
@@ -263,6 +314,13 @@ def parse_optional_int(value):
     return int(normalized)
 
 
+def parse_optional_float(value):
+    normalized = str(value or "").strip()
+    if not normalized:
+        return None
+    return float(normalized)
+
+
 def is_safe_redirect_target(target):
     if not target:
         return False
@@ -284,6 +342,10 @@ def get_people():
 
 def get_users():
     return User.query.order_by(func.lower(User.username)).all()
+
+
+def get_restaurants():
+    return Restaurant.query.order_by(func.lower(Restaurant.name), func.lower(func.coalesce(Restaurant.city, ""))).all()
 
 
 def get_member_account_options(current_person=None):
@@ -323,6 +385,42 @@ def get_weight_map(visit):
     return {weight.person_id: weight for weight in visit.weights}
 
 
+def get_restaurant_choices():
+    return get_restaurants()
+
+
+def resolve_restaurant(restaurant_value):
+    try:
+        restaurant_id = parse_optional_int(restaurant_value)
+    except ValueError:
+        return None, "Selected restaurant was invalid."
+
+    if restaurant_id is None:
+        return None, "Restaurant is required."
+
+    restaurant = db.session.get(Restaurant, restaurant_id)
+    if not restaurant:
+        return None, "Selected restaurant was invalid."
+
+    return restaurant, None
+
+
+def normalize_restaurant_status(value):
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in RESTAURANT_STATUS_CHOICES else None
+
+
+def build_restaurant_roster(restaurants):
+    return sorted(
+        (RestaurantRosterRow(restaurant) for restaurant in restaurants),
+        key=lambda row: (
+            0 if row.restaurant.status == "visited" else 1,
+            row.restaurant.name.lower(),
+            (row.restaurant.city or "").lower(),
+        ),
+    )
+
+
 def sort_visits(visits):
     return sorted(
         visits,
@@ -358,27 +456,63 @@ def build_member_roster(people):
 def build_restaurant_rollup(visits):
     counts = {}
     for visit in visits:
-        counts[visit.restaurant] = counts.get(visit.restaurant, 0) + 1
-    return [RestaurantSummary(name, count) for name, count in sorted(counts.items(), key=lambda item: item[0].lower())]
+        if not visit.restaurant_ref:
+            continue
+        restaurant = visit.restaurant_ref
+        counts[restaurant] = counts.get(restaurant, 0) + 1
+    return [
+        RestaurantSummary(restaurant, count)
+        for restaurant, count in sorted(
+            counts.items(),
+            key=lambda item: item[0].name.lower(),
+        )
+    ]
+
+
+def build_map_markers(restaurants):
+    markers = []
+    for restaurant in restaurants:
+        if not restaurant.has_coordinates:
+            continue
+        latest_visit = restaurant.latest_visit
+        markers.append(
+            {
+                "id": restaurant.id,
+                "name": restaurant.name,
+                "latitude": restaurant.latitude,
+                "longitude": restaurant.longitude,
+                "status": restaurant.status,
+                "address": restaurant.full_address,
+                "notes": restaurant.notes or "",
+                "visit_count": restaurant.visit_count,
+                "latest_visit": latest_visit.label if latest_visit else "",
+            }
+        )
+    return markers
 
 
 def build_site_snapshot():
     visits = sort_visits(Visit.query.all())
     people = get_people()
     founders = User.query.filter_by(is_admin=True).order_by(func.lower(User.username)).all()
+    restaurants = get_restaurants()
     restaurant_rollup = build_restaurant_rollup(visits)
     total_gain = round(sum(weight.gain for visit in visits for weight in visit.weights), 1)
     latest_visit = visits[0] if visits else None
     guest_leaderboard = build_guest_leaderboard(people)
     member_roster = build_member_roster(people)
+    restaurant_roster = build_restaurant_roster(restaurants)
     monthly_trend = [{"label": visit.label, "gain": visit.total_gain} for visit in visits[:6]]
     max_monthly_gain = max((item["gain"] for item in monthly_trend), default=0)
+    map_markers = build_map_markers(restaurants)
 
     return {
         "visits": visits,
         "people": people,
         "founders": founders,
+        "restaurants": restaurants,
         "restaurant_rollup": restaurant_rollup,
+        "restaurant_roster": restaurant_roster,
         "total_gain": total_gain,
         "latest_visit": latest_visit,
         "guest_leaderboard": guest_leaderboard,
@@ -389,8 +523,11 @@ def build_site_snapshot():
         "scoreboard": sorted((VisitScoreRow(visit) for visit in visits), key=lambda row: row.total_gain, reverse=True),
         "visit_count": len(visits),
         "people_count": len(people),
-        "restaurant_count": len(restaurant_rollup),
+        "restaurant_count": len(restaurants),
         "founder_count": len(founders),
+        "mapped_restaurant_count": len(map_markers),
+        "target_restaurant_count": sum(1 for restaurant in restaurants if restaurant.status == "target"),
+        "map_markers": map_markers,
     }
 
 
@@ -399,8 +536,9 @@ def validate_visit_form():
         return "Year is required."
     if not request.form.get("month", "").strip():
         return "Month is required."
-    if not request.form.get("restaurant", "").strip():
-        return "Restaurant is required."
+    restaurant, restaurant_error = resolve_restaurant(request.form.get("restaurant_id"))
+    if restaurant_error:
+        return restaurant_error
 
     try:
         year = parse_int(request.form.get("year"))
@@ -421,6 +559,32 @@ def validate_person_form():
         return "First name is required."
     if not request.form.get("last_name", "").strip():
         return "Last name is required."
+    return None
+
+
+def validate_restaurant_form():
+    if not request.form.get("name", "").strip():
+        return "Restaurant name is required."
+
+    status = normalize_restaurant_status(request.form.get("status"))
+    if not status:
+        return "Restaurant status was invalid."
+
+    try:
+        latitude = parse_optional_float(request.form.get("latitude"))
+        longitude = parse_optional_float(request.form.get("longitude"))
+    except ValueError:
+        return "Latitude and longitude must be numbers."
+
+    if (latitude is None) != (longitude is None):
+        return "Enter both latitude and longitude, or leave both blank."
+
+    if latitude is not None and not (-90 <= latitude <= 90):
+        return "Latitude must be between -90 and 90."
+
+    if longitude is not None and not (-180 <= longitude <= 180):
+        return "Longitude must be between -180 and 180."
+
     return None
 
 
@@ -450,7 +614,10 @@ def build_weight_payload(people):
 def register_routes(app):
     @app.context_processor
     def inject_defaults():
-        return {"month_choices": MONTH_CHOICES}
+        return {
+            "month_choices": MONTH_CHOICES,
+            "restaurant_status_choices": RESTAURANT_STATUS_CHOICES,
+        }
 
     @app.route("/")
     def home():
@@ -502,6 +669,8 @@ def register_routes(app):
             users=users[:6],
             recent_comments=recent_comments,
             user_count=len(users),
+            restaurant_count=snapshot["restaurant_count"],
+            mapped_restaurant_count=snapshot["mapped_restaurant_count"],
         )
 
     @app.route("/login", methods=["GET", "POST"])
@@ -584,25 +753,33 @@ def register_routes(app):
     @admin_required
     def create_visit():
         people = get_people()
+        restaurants = get_restaurant_choices()
         if not people:
             flash("Create at least one member before logging a visit.", "error")
             return redirect(url_for("list_members"))
+        if not restaurants:
+            flash("Create at least one restaurant before logging a visit.", "error")
+            return redirect(url_for("list_restaurants"))
 
         if request.method == "POST":
             validation_error = validate_visit_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template("visit_form.html", visit=None, weight_map={}, people=people)
+                return render_template("visit_form.html", visit=None, weight_map={}, people=people, restaurants=restaurants)
 
             weights, payload_error = build_weight_payload(people)
             if payload_error:
                 flash(payload_error, "error")
-                return render_template("visit_form.html", visit=None, weight_map={}, people=people)
+                return render_template("visit_form.html", visit=None, weight_map={}, people=people, restaurants=restaurants)
+
+            restaurant, _ = resolve_restaurant(request.form.get("restaurant_id"))
+            if restaurant.status == "target":
+                restaurant.status = "visited"
 
             visit = Visit(
                 year=parse_int(request.form.get("year")),
                 month=request.form.get("month"),
-                restaurant=request.form.get("restaurant", "").strip(),
+                restaurant_ref=restaurant,
             )
             for weight_data in weights:
                 visit.weights.append(WeighIn(**weight_data))
@@ -611,27 +788,44 @@ def register_routes(app):
             flash("Buffet visit created.", "success")
             return redirect(url_for("admin_dashboard"))
 
-        return render_template("visit_form.html", visit=None, weight_map={}, people=people)
+        return render_template("visit_form.html", visit=None, weight_map={}, people=people, restaurants=restaurants)
 
     @app.route("/admin/visit/<int:visit_id>/edit", methods=["GET", "POST"])
     @admin_required
     def edit_visit(visit_id):
         visit = Visit.query.get_or_404(visit_id)
         people = get_people()
+        restaurants = get_restaurant_choices()
         if request.method == "POST":
             validation_error = validate_visit_form()
             if validation_error:
                 flash(validation_error, "error")
-                return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
+                return render_template(
+                    "visit_form.html",
+                    visit=visit,
+                    weight_map=get_weight_map(visit),
+                    people=people,
+                    restaurants=restaurants,
+                )
 
             weights, payload_error = build_weight_payload(people)
             if payload_error:
                 flash(payload_error, "error")
-                return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
+                return render_template(
+                    "visit_form.html",
+                    visit=visit,
+                    weight_map=get_weight_map(visit),
+                    people=people,
+                    restaurants=restaurants,
+                )
+
+            restaurant, _ = resolve_restaurant(request.form.get("restaurant_id"))
+            if restaurant.status == "target":
+                restaurant.status = "visited"
 
             visit.year = parse_int(request.form.get("year"))
             visit.month = request.form.get("month")
-            visit.restaurant = request.form.get("restaurant", "").strip()
+            visit.restaurant_ref = restaurant
             visit.weights.clear()
             for weight_data in weights:
                 visit.weights.append(WeighIn(**weight_data))
@@ -639,7 +833,7 @@ def register_routes(app):
             flash("Buffet visit updated.", "success")
             return redirect(url_for("admin_dashboard"))
 
-        return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people)
+        return render_template("visit_form.html", visit=visit, weight_map=get_weight_map(visit), people=people, restaurants=restaurants)
 
     @app.route("/admin/visit/<int:visit_id>/delete", methods=["POST"])
     @admin_required
@@ -726,6 +920,61 @@ def register_routes(app):
     @admin_required
     def list_members():
         return render_template("members.html", member_roster=build_member_roster(get_people()))
+
+    @app.route("/admin/restaurants")
+    @admin_required
+    def list_restaurants():
+        return render_template("restaurants.html", restaurant_roster=build_restaurant_roster(get_restaurants()))
+
+    @app.route("/admin/restaurants/new", methods=["GET", "POST"])
+    @admin_required
+    def create_restaurant():
+        if request.method == "POST":
+            validation_error = validate_restaurant_form()
+            if validation_error:
+                flash(validation_error, "error")
+                return render_template("restaurant_form.html", restaurant=None)
+
+            restaurant = Restaurant(
+                name=request.form.get("name", "").strip(),
+                street_address=request.form.get("street_address", "").strip() or None,
+                city=request.form.get("city", "").strip() or None,
+                state=request.form.get("state", "").strip().upper() or None,
+                latitude=parse_optional_float(request.form.get("latitude")),
+                longitude=parse_optional_float(request.form.get("longitude")),
+                status=normalize_restaurant_status(request.form.get("status")),
+                notes=request.form.get("notes", "").strip() or None,
+            )
+            db.session.add(restaurant)
+            db.session.commit()
+            flash("Restaurant created.", "success")
+            return redirect(url_for("list_restaurants"))
+
+        return render_template("restaurant_form.html", restaurant=None)
+
+    @app.route("/admin/restaurants/<int:restaurant_id>/edit", methods=["GET", "POST"])
+    @admin_required
+    def edit_restaurant(restaurant_id):
+        restaurant = Restaurant.query.get_or_404(restaurant_id)
+        if request.method == "POST":
+            validation_error = validate_restaurant_form()
+            if validation_error:
+                flash(validation_error, "error")
+                return render_template("restaurant_form.html", restaurant=restaurant)
+
+            restaurant.name = request.form.get("name", "").strip()
+            restaurant.street_address = request.form.get("street_address", "").strip() or None
+            restaurant.city = request.form.get("city", "").strip() or None
+            restaurant.state = request.form.get("state", "").strip().upper() or None
+            restaurant.latitude = parse_optional_float(request.form.get("latitude"))
+            restaurant.longitude = parse_optional_float(request.form.get("longitude"))
+            restaurant.status = normalize_restaurant_status(request.form.get("status"))
+            restaurant.notes = request.form.get("notes", "").strip() or None
+            db.session.commit()
+            flash("Restaurant updated.", "success")
+            return redirect(url_for("list_restaurants"))
+
+        return render_template("restaurant_form.html", restaurant=restaurant)
 
     @app.route("/admin/members/new", methods=["GET", "POST"])
     @admin_required

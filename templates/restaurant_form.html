@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Edit Restaurant" if restaurant else "Add Restaurant" }} | Buffet of the Month Club{% endblock %}
+
+{% block content %}
+<main class="single-column">
+  <section class="panel auth-panel spotlight-panel">
+    <div class="section-heading compact">
+      <div>
+        <p class="eyebrow">Atlas admin</p>
+        <h2>{{ "Edit restaurant" if restaurant else "Add restaurant" }}</h2>
+      </div>
+      <p>Store the location once here, then reuse it for every visit and map pin.</p>
+    </div>
+    <form method="post" class="form-grid">
+      <label>
+        <span>Name</span>
+        <input type="text" name="name" value="{{ request.form.get('name', restaurant.name if restaurant else '') }}" required />
+      </label>
+
+      <label>
+        <span>Street address</span>
+        <input
+          type="text"
+          name="street_address"
+          value="{{ request.form.get('street_address', restaurant.street_address if restaurant else '') }}"
+        />
+      </label>
+
+      <div class="grid-two">
+        <label>
+          <span>City</span>
+          <input type="text" name="city" value="{{ request.form.get('city', restaurant.city if restaurant else '') }}" />
+        </label>
+        <label>
+          <span>State</span>
+          <input type="text" name="state" maxlength="40" value="{{ request.form.get('state', restaurant.state if restaurant else '') }}" />
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          <span>Latitude</span>
+          <input
+            type="number"
+            name="latitude"
+            step="0.000001"
+            value="{{ request.form.get('latitude', restaurant.latitude if restaurant and restaurant.latitude is not none else '') }}"
+          />
+        </label>
+        <label>
+          <span>Longitude</span>
+          <input
+            type="number"
+            name="longitude"
+            step="0.000001"
+            value="{{ request.form.get('longitude', restaurant.longitude if restaurant and restaurant.longitude is not none else '') }}"
+          />
+        </label>
+      </div>
+
+      <label>
+        <span>Status</span>
+        {% set selected_status = request.form.get('status', restaurant.status if restaurant else 'target') %}
+        <select name="status" required>
+          {% for status in restaurant_status_choices %}
+          <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>{{ status|title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>
+        <span>Notes</span>
+        <textarea name="notes" rows="4">{{ request.form.get('notes', restaurant.notes if restaurant else '') }}</textarea>
+      </label>
+
+      <button type="submit" class="button button-primary">{{ "Save restaurant" if restaurant else "Create restaurant" }}</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
